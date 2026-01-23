@@ -1,0 +1,62 @@
+import json
+import torch
+from torch.utils.data import Dataset
+
+from features import load_audio, log_mel_spectrogram
+
+
+def build_label_mapping(labels):
+    unique = sorted(set(labels))
+    return {label: idx for idx, label in enumerate(unique)}
+
+
+class AudioDataset(Dataset):
+    def __init__(
+        self,
+        dataframe,
+        label_to_index,
+        sample_rate=22050,
+        duration=4.0,
+        n_mels=64,
+        n_fft=1024,
+        hop_length=512,
+    ):
+        self.df = dataframe.reset_index(drop=True)
+        self.label_to_index = label_to_index
+        self.sample_rate = sample_rate
+        self.duration = duration
+        self.n_mels = n_mels
+        self.n_fft = n_fft
+        self.hop_length = hop_length
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        row = self.df.iloc[idx]
+        y, sr = load_audio(
+            row["file_path"],
+            target_sr=self.sample_rate,
+            duration=self.duration,
+        )
+        feat = log_mel_spectrogram(
+            y,
+            sr,
+            n_mels=self.n_mels,
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+        )
+        x = torch.tensor(feat).unsqueeze(0)
+        y_label = self.label_to_index[row["label"]]
+        return x, y_label
+
+
+def save_label_mapping(path, label_to_index):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(label_to_index, f, indent=2, sort_keys=True)
+
+
+def load_label_mapping(path):
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return {k: int(v) for k, v in data.items()}
