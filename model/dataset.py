@@ -1,8 +1,9 @@
 import json
 import torch
 from torch.utils.data import Dataset
-
-from features import load_audio, log_mel_spectrogram
+from preprocessing.audio_features import load_audio, compute_spectrogram
+import pandas as pd
+import numpy as np
 
 
 def build_label_mapping(labels):
@@ -11,16 +12,7 @@ def build_label_mapping(labels):
 
 
 class AudioDataset(Dataset):
-    def __init__(
-        self,
-        dataframe,
-        label_to_index,
-        sample_rate=22050,
-        duration=4.0,
-        n_mels=64,
-        n_fft=1024,
-        hop_length=512,
-    ):
+    def __init__(self, dataframe, label_to_index, sample_rate=22050, duration=4.0, n_mels=64, n_fft=1024, hop_length=512):
         self.df = dataframe.reset_index(drop=True)
         self.label_to_index = label_to_index
         self.sample_rate = sample_rate
@@ -39,14 +31,17 @@ class AudioDataset(Dataset):
             target_sr=self.sample_rate,
             duration=self.duration,
         )
-        feat = log_mel_spectrogram(
+        feat = compute_spectrogram(
             y,
             sr,
             n_mels=self.n_mels,
             n_fft=self.n_fft,
             hop_length=self.hop_length,
         )
-        x = torch.tensor(feat).unsqueeze(0)
+        
+        x = np.expand_dims(feat, axis=0)
+        x = torch.tensor(x, dtype=torch.float32)
+
         y_label = self.label_to_index[row["label"]]
         return x, y_label
 

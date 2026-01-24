@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from dataset import AudioDataset, build_label_mapping, save_label_mapping
-from model import AudioCNN
+from cnn import AudioCNN
 
 
 def set_seed(seed):

@@ -4,7 +4,7 @@ import torch
 
 from dataset import load_label_mapping
 from features import load_audio, log_mel_spectrogram
-from model import AudioCNN
+from cnn import AudioCNN
 
 
 def main():
