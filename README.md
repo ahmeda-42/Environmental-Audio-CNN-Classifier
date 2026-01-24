@@ -12,7 +12,7 @@ End-to-end ML project that classifies environmental sounds (e.g., dog bark, sire
 - `src/` - core training, model, and feature code
 - `scripts/` - dataset preparation utilities
 - `data/` - place datasets here (not committed)
-- `models/` - saved checkpoints
+- `artifacts/` - saved checkpoints
 - `notebooks/` - exploration notebooks
 
 ## Setup
@@ -35,7 +35,7 @@ python scripts/prepare_urbansound8k.py \
 ```bash
 python src/train.py \
   --csv-path data/urbansound8k.csv \
-  --model-out models/cnn.pt \
+  --model-out artifacts/cnn.pt \
   --epochs 20
 ```
 
@@ -43,12 +43,12 @@ python src/train.py \
 ```bash
 python src/evaluate.py \
   --csv-path data/urbansound8k.csv \
-  --model-path models/cnn.pt
+  --model-path artifacts/cnn.pt
 ```
 
 ## Predict a Single File
 ```bash
 python src/predict.py \
   --audio-path path/to/example.wav \
-  --model-path models/cnn.pt
+  --model-path artifacts/cnn.pt
 ```

@@ -4,8 +4,7 @@ __pycache__/
 .DS_Store
 
 data/
-models/
-notebooks/
+artifacts/
 *.wav
 *.mp3
 *.flac

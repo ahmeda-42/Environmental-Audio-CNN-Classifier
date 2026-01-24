@@ -1,13 +1,16 @@
 import argparse
 import os
 import random
-
+import sys
 import numpy as np
 import pandas as pd
 import torch
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 from dataset import AudioDataset, build_label_mapping, save_label_mapping
 from cnn import AudioCNN
@@ -18,7 +21,6 @@ def set_seed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-
 
 def train_epoch(model, loader, optimizer, criterion, device):
     model.train()
@@ -84,6 +86,7 @@ def main():
         stratify=df["label"],
     )
 
+    # dataset 
     train_ds = AudioDataset(
         train_df,
         label_to_index,
@@ -98,14 +101,16 @@ def main():
         duration=args.duration,
         n_mels=args.n_mels,
     )
+    train_loader = DataLoader(train_ds, batch_size=16, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=16, shuffle=False)
 
-    train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False)
-
+    # model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = AudioCNN(num_classes=len(label_to_index)).to(device)
+
+    # loss function and optimizer
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     best_acc = 0.0
     for epoch in range(1, args.epochs + 1):

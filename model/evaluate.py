@@ -1,4 +1,6 @@
 import argparse
+import os
+import sys
 
 import pandas as pd
 import torch
@@ -6,8 +8,12 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 from dataset import AudioDataset, build_label_mapping, load_label_mapping
-from model import AudioCNN
+from cnn import AudioCNN
 
 
 def evaluate(model, loader, device):
