@@ -45,6 +45,7 @@ def build_csv(dataset_root, output_csv):
             {
                 "file_path": file_path,
                 "label": row["class"],
+                "fold": int(row["fold"]),
             }
         )
 

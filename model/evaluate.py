@@ -1,10 +1,10 @@
-import argparse
 import os
 import sys
 
+import numpy as np
 import pandas as pd
 import torch
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -15,11 +15,32 @@ if ROOT_DIR not in sys.path:
 from dataset import AudioDataset, build_label_mapping, load_label_mapping
 from cnn import AudioCNN
 
+CSV_PATH = "data/urbansound8k.csv"
+MODEL_PATH = "artifacts/cnn.pt"
+BATCH_SIZE = 32
+SEED = 42
+
+
+def ensure_fold_column(df):
+    if "fold" in df.columns:
+        return df
+    extracted = df["file_path"].str.extract(r"[/\\\\]fold(\d+)[/\\\\]", expand=False)
+    if extracted.isnull().any():
+        raise ValueError(
+            "Missing 'fold' column and could not infer fold from file_path. "
+            "Re-run scripts/prepare_urbansound8k.py to regenerate the CSV."
+        )
+    df = df.copy()
+    df["fold"] = extracted.astype(int)
+    return df
+
 
 def evaluate(model, loader, device):
     model.eval()
     correct = 0
     total = 0
+    all_preds = []
+    all_labels = []
     with torch.no_grad():
         for x, y in tqdm(loader, desc="eval", leave=False):
             x = x.to(device)
@@ -28,42 +49,50 @@ def evaluate(model, loader, device):
             preds = torch.argmax(logits, dim=1)
             correct += (preds == y).sum().item()
             total += x.size(0)
-    return correct / total if total else 0.0
+            all_preds.extend(preds.cpu().numpy().tolist())
+            all_labels.extend(y.cpu().numpy().tolist())
+    acc = correct / total if total else 0.0
+    return acc, np.array(all_labels), np.array(all_preds)
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--csv-path", required=True)
-    parser.add_argument("--model-path", required=True)
-    parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--split", type=float, default=0.2)
-    parser.add_argument("--seed", type=int, default=42)
-    args = parser.parse_args()
-
-    df = pd.read_csv(args.csv_path)
-    labels_path = args.model_path + ".labels.json"
+    df = pd.read_csv(CSV_PATH)
+    df = ensure_fold_column(df)
+    labels_path = MODEL_PATH + ".labels.json"
     try:
         label_to_index = load_label_mapping(labels_path)
     except FileNotFoundError:
         label_to_index = build_label_mapping(df["label"].tolist())
 
-    _, test_df = train_test_split(
-        df,
-        test_size=args.split,
-        random_state=args.seed,
-        stratify=df["label"],
-    )
+    test_df = df[df["fold"] == 10]
 
     test_ds = AudioDataset(test_df, label_to_index)
-    test_loader = DataLoader(test_ds, batch_size=args.batch_size, shuffle=False)
+    test_loader = DataLoader(test_ds, batch_size=BATCH_SIZE, shuffle=False)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = AudioCNN(num_classes=len(label_to_index))
-    model.load_state_dict(torch.load(args.model_path, map_location=device))
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
     model.to(device)
+    model.eval()
 
-    acc = evaluate(model, test_loader, device)
-    print(f"test_acc={acc:.3f}")
+    acc, y_true, y_pred = evaluate(model, test_loader, device)
+    print(f"\ntest_acc = {acc:.3f}")
+
+    labels_sorted = [label for label, _ in sorted(label_to_index.items(), key=lambda x: x[1])]
+    cm = confusion_matrix(y_true, y_pred, labels=list(range(len(labels_sorted))))
+    denom = cm.sum(axis=1)
+    per_class_acc = np.divide(
+        cm.diagonal(),
+        denom,
+        out=np.zeros_like(denom, dtype=float),
+        where=denom != 0,
+    )
+
+    print("\nconfusion_matrix =")
+    print(cm)
+    print("\nclass_wise_accuracy =")
+    for label, value in zip(labels_sorted, per_class_acc):
+        print(f"{label}: {value:.3f}")
 
 
 if __name__ == "__main__":
