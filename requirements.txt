@@ -6,3 +6,6 @@ soundfile
 torch
 torchaudio
 tqdm
+fastapi
+uvicorn
+python-multipart

@@ -1,6 +1,5 @@
 import os
 import sys
-
 import numpy as np
 import pandas as pd
 import torch
@@ -8,6 +7,7 @@ from sklearn.metrics import confusion_matrix
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+# Ensure repo root is on sys.path for local imports
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
@@ -15,12 +15,14 @@ if ROOT_DIR not in sys.path:
 from dataset import AudioDataset, build_label_mapping, load_label_mapping
 from cnn import AudioCNN
 
+
 CSV_PATH = "data/urbansound8k.csv"
 MODEL_PATH = "artifacts/cnn.pt"
 BATCH_SIZE = 32
 
 
 def ensure_fold_column(df):
+    # Use explicit fold column if present; otherwise infer from file path
     if "fold" in df.columns:
         return df
     extracted = df["file_path"].str.extract(r"[/\\\\]fold(\d+)[/\\\\]", expand=False)
@@ -35,6 +37,7 @@ def ensure_fold_column(df):
 
 
 def evaluate(model, loader, device):
+    # Run inference on all batches and collect predictions/labels
     model.eval()
     correct = 0
     total = 0
@@ -55,6 +58,7 @@ def evaluate(model, loader, device):
 
 
 def main():
+    # Load metadata and label mapping
     df = pd.read_csv(CSV_PATH)
     df = ensure_fold_column(df)
     labels_path = MODEL_PATH + ".labels.json"
@@ -63,20 +67,25 @@ def main():
     except FileNotFoundError:
         label_to_index = build_label_mapping(df["label"].tolist())
 
+    # Fixed test split: fold 10 only
     test_df = df[df["fold"] == 10]
 
+    # Dataset handles audio loading + spectrogram extraction
     test_ds = AudioDataset(test_df, label_to_index)
     test_loader = DataLoader(test_ds, batch_size=BATCH_SIZE, shuffle=False)
 
+    # Load model weights for evaluation
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = AudioCNN(num_classes=len(label_to_index))
     model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
     model.to(device)
     model.eval()
 
+    # Overall accuracy and per-sample predictions
     acc, y_true, y_pred = evaluate(model, test_loader, device)
     print(f"\ntest_acc = {acc:.3f}")
 
+    # Confusion matrix and class-wise accuracy
     labels_sorted = [label for label, _ in sorted(label_to_index.items(), key=lambda x: x[1])]
     cm = confusion_matrix(y_true, y_pred, labels=list(range(len(labels_sorted))))
     denom = cm.sum(axis=1)

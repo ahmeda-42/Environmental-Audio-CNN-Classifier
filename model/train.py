@@ -6,6 +6,8 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+
+# Ensure repo root is on sys.path for local imports
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
@@ -13,18 +15,20 @@ if ROOT_DIR not in sys.path:
 from dataset import AudioDataset, build_label_mapping, save_label_mapping
 from cnn import AudioCNN
 
+
 CSV_PATH = "data/urbansound8k.csv"
 MODEL_OUT = "artifacts/cnn.pt"
 EPOCHS = 5
 BATCH_SIZE = 32
 LEARNING_RATE = 1e-3
-SEED = 42
+SEED = 67
 SAMPLE_RATE = 22050
 DURATION = 4.0
 N_MELS = 64
 
 
 def ensure_fold_column(df):
+    # Use explicit fold column if present; otherwise infer from file path
     if "fold" in df.columns:
         return df
     extracted = df["file_path"].str.extract(r"[/\\\\]fold(\d+)[/\\\\]", expand=False)
@@ -39,12 +43,14 @@ def ensure_fold_column(df):
 
 
 def set_seed(seed):
+    # Make results more reproducible across runs
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
 def train_epoch(model, loader, optimizer, criterion, device):
+    # One full pass over the training data
     model.train()
     total_loss = 0.0
     correct = 0
@@ -66,6 +72,7 @@ def train_epoch(model, loader, optimizer, criterion, device):
 
 
 def eval_epoch(model, loader, criterion, device):
+    # One full pass over the validation data
     model.eval()
     total_loss = 0.0
     correct = 0
@@ -86,14 +93,16 @@ def eval_epoch(model, loader, criterion, device):
 def main():
     set_seed(SEED)
 
+    # Load metadata and build label mapping
     df = pd.read_csv(CSV_PATH)
     df = ensure_fold_column(df)
     label_to_index = build_label_mapping(df["label"].tolist())
 
+    # Fixed fold split: train on folds 1-8, validate on fold 9
     train_df = df[df["fold"].isin([1, 2, 3, 4, 5, 6, 7, 8])]
     val_df = df[df["fold"] == 9]
 
-    # dataset 
+    # Dataset objects perform audio loading + spectrogram extraction
     train_ds = AudioDataset(
         train_df,
         label_to_index,
@@ -108,17 +117,20 @@ def main():
         duration=DURATION,
         n_mels=N_MELS,
     )
+    
+    # Batch loaders for efficient training
     train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False)
 
-    # model
+    # Model and device setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = AudioCNN(num_classes=len(label_to_index)).to(device)
 
-    # loss function and optimizer
+    # Loss function and optimizer
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
+    # Train and keep the best checkpoint by validation accuracy
     best_acc = 0.0
     for epoch in range(1, EPOCHS + 1):
         train_loss, train_acc = train_epoch(
@@ -132,10 +144,12 @@ def main():
         )
         if val_acc > best_acc:
             best_acc = val_acc
+            # Save weights and label mapping together
             os.makedirs(os.path.dirname(MODEL_OUT), exist_ok=True)
             torch.save(model.state_dict(), MODEL_OUT)
             save_label_mapping(MODEL_OUT + ".labels.json", label_to_index)
 
+    # Final summary of the best validation accuracy
     print(f"best_val_acc={best_acc:.3f}")
 
 

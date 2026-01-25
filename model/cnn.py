@@ -5,6 +5,7 @@ import torch.nn.functional as F
 class AudioCNN(nn.Module):
     def __init__(self, num_classes=10):
         super().__init__()
+        # Feature extractor for 2D spectrograms: (B, 1, F, T)
         self.features = nn.Sequential(
             nn.Conv2d(1, 16, kernel_size=3, padding=1),
             nn.BatchNorm2d(16),
@@ -19,6 +20,7 @@ class AudioCNN(nn.Module):
             nn.ReLU(),
             nn.AdaptiveAvgPool2d((1, 1)),
         )
+        # Final classifier head producing class logits
         self.classifier = nn.Sequential(
             nn.Flatten(),
             nn.Dropout(0.3),
@@ -26,5 +28,6 @@ class AudioCNN(nn.Module):
         )
 
     def forward(self, x):
+        # Forward pass: extract features then classify
         x = self.features(x)
         return self.classifier(x)

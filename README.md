@@ -52,3 +52,16 @@ python src/predict.py \
   --audio-path path/to/example.wav \
   --model-path artifacts/cnn.pt
 ```
+
+## FastAPI Server
+Start the API for a future React frontend:
+```bash
+uvicorn app.main:app --reload
+```
+
+Endpoints:
+- `GET /health` - health check
+- `GET /labels` - class names
+- `POST /predict` - upload audio and get top predictions
+- `POST /spectrogram` - upload audio and get spectrogram array
+- `WS /ws/predict` - stream raw float32 PCM and get predictions
