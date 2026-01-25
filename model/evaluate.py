@@ -18,7 +18,6 @@ from cnn import AudioCNN
 CSV_PATH = "data/urbansound8k.csv"
 MODEL_PATH = "artifacts/cnn.pt"
 BATCH_SIZE = 32
-SEED = 42
 
 
 def ensure_fold_column(df):
