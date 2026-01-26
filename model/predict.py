@@ -22,7 +22,7 @@ def load_model(model_path, num_classes, device):
     model.eval()
     return model
 
-def predict(audio_path, sample_rate=22050, duration=4.0, n_mels=64):
+def predict(audio_path, sample_rate=22050, duration=4.0, n_mels=64, top_k=3):
     # Load label mapping to translate indices -> class names
     label_to_index = load_label_mapping(MODEL_PATH + ".labels.json")
     index_to_label = {v: k for k, v in label_to_index.items()}

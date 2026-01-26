@@ -54,26 +54,6 @@ DURATION = 4.0
 N_MELS = 64
 
 
-def _load_audio_from_upload(upload: UploadFile, target_sr, duration):
-    # Save to a temp file so librosa can read it reliably
-    suffix = os.path.splitext(upload.filename or "")[1]
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(upload.file.read())
-        tmp_path = tmp.name
-    try:
-        y, sr = load_audio(tmp_path, target_sr=target_sr, duration=duration)
-    finally:
-        os.remove(tmp_path)
-    return y, sr
-
-
-@lru_cache(maxsize=1)
-def get_label_mapping():
-    if not os.path.exists(LABELS_PATH):
-        raise FileNotFoundError(f"labels not found: {LABELS_PATH}")
-    return load_label_mapping(LABELS_PATH)
-
-
 @lru_cache(maxsize=1)
 def load_model():
     if not os.path.exists(MODEL_PATH):
@@ -126,14 +106,11 @@ def predict_audio(
     params: PredictRequest = Depends(),
     file: UploadFile = File(...),
 ):
+    return predict(file, params.sample_rate, params.duration, params.n_mels, params.top_k)
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
 
-    y, sr = _load_audio_from_upload(
-        file,
-        target_sr=params.sample_rate,
-        duration=params.duration,
-    )
+    y, sr = _load_audio_from_upload(file, target_sr=params.sample_rate, duration=params.duration)
     probs, spec = predict_from_waveform(y, sr, params.n_mels)
     spec_payload = {
         "image": spectrogram_to_png_base64(spec),

@@ -2,8 +2,8 @@ import numpy as np
 import librosa
 
 # Load audio file as waveform and resample to target sample rate and duration
-def load_audio(path, target_sr=22050, duration=4.0):
-    y, sr = librosa.load(path, sr=target_sr, mono=True)
+def load_audio(audio_path, target_sr=22050, duration=4.0):
+    y, sr = librosa.load(audio_path, sr=target_sr, mono=True)
     target_len = int(target_sr * duration)
     if len(y) < target_len:
         pad_width = target_len - len(y)
@@ -11,6 +11,20 @@ def load_audio(path, target_sr=22050, duration=4.0):
     else:
         y = y[:target_len]
     return y, target_sr
+
+
+# Load audio from upload file
+def load_audio_from_upload(upload: UploadFile, target_sr, duration):
+    # Save to a temp file so librosa can read it reliably
+    suffix = os.path.splitext(upload.filename or "")[1]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(upload.file.read())
+        tmp_path = tmp.name
+    try:
+        y, sr = load_audio(tmp_path, target_sr=target_sr, duration=duration)
+    finally:
+        os.remove(tmp_path)
+    return y, sr
 
 
 # Compute spectrogram from waveform (maybe change 64 to 128 and 1024 to 2048?)
