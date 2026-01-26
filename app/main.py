@@ -42,17 +42,6 @@ DURATION = 4.0
 N_MELS = 64
 
 
-def predict_from_waveform(y, sr, n_mels):
-    # Convert waveform -> spectrogram -> logits -> probabilities
-    feat = compute_spectrogram(y, sr, n_mels=n_mels)
-    x = torch.tensor(feat).unsqueeze(0).unsqueeze(0)
-    model, device = load_model()
-    with torch.no_grad():
-        logits = model(x.to(device))
-        probs = F.softmax(logits, dim=1).cpu().numpy()[0]
-    return probs, feat
-
-
 @app.get("/health", response_model=HealthResponse)
 def health():
     return {"status": "ok"}
@@ -114,8 +103,14 @@ async def websocket_predict(websocket: WebSocket):
 
             if buffer.size >= target_len:
                 window = buffer[-target_len:]
-                probs, _ = predict_from_waveform(window, sample_rate, n_mels)
-                label_to_index = get_label_mapping()
+                feat = compute_spectrogram(window, sample_rate, n_mels=n_mels)
+                x = torch.tensor(feat).unsqueeze(0).unsqueeze(0)
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                model = load_model(MODEL_PATH, num_classes=idk, device=device)
+                with torch.no_grad():
+                    logits = model(x.to(device))
+                    probs = F.softmax(logits, dim=1).cpu().numpy()[0]
+                label_to_index = load_label_mapping(MODEL_PATH + ".labels.json")
                 index_to_label = {v: k for k, v in label_to_index.items()}
                 pred_idx = int(np.argmax(probs))
                 await websocket.send_json(
