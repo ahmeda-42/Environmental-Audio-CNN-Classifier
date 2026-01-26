@@ -14,6 +14,7 @@ from cnn import AudioCNN
 
 MODEL_PATH = "artifacts/cnn.pt"
 
+
 def load_model(model_path, num_classes, device):
     # Build the model and load trained weights
     model = AudioCNN(num_classes=num_classes)
@@ -22,10 +23,32 @@ def load_model(model_path, num_classes, device):
     model.eval()
     return model
 
-def predict(audio_path, sample_rate=22050, duration=4.0, n_mels=64, top_k=3):
+
+def labels():
     # Load label mapping to translate indices -> class names
     label_to_index = load_label_mapping(MODEL_PATH + ".labels.json")
     index_to_label = {v: k for k, v in label_to_index.items()}
+    return label_to_index, index_to_label
+
+
+def spectogram(file, sample_rate=22050, duration=4.0, n_mels=64):
+    # Load audio from upload file and compute spectrogram
+    y, sr = load_audio(file, sample_rate, duration)
+    spectogram = compute_spectrogram(y, sr, n_mels=n_mels)
+
+    # Convert spectrogram to PNG base64 image
+    spectogram_response = {
+        "image": spectrogram_to_png_base64(spectogram),
+        "features": spectogram.tolist(),
+        "shape": list(spectogram.shape),
+    }
+
+    return spectogram, spectogram_response
+
+
+def predict(audio_path, sample_rate=22050, duration=4.0, n_mels=64, top_k=3):
+    # Load label mapping to translate indices -> class names
+    label_to_index, index_to_label = labels()
 
     # Convert raw audio to a log-mel spectrogram tensor
     y, sr = load_audio(audio_path, sample_rate, duration)

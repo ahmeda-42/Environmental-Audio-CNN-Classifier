@@ -13,17 +13,7 @@ import torch.nn.functional as F
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
-# Make local modules importable when running from the repo root
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_DIR = os.path.join(ROOT_DIR, "model")
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
-if MODEL_DIR not in sys.path:
-    sys.path.insert(0, MODEL_DIR)
-
-from cnn import AudioCNN
-from dataset import load_label_mapping
-from preprocessing.audio_features import load_audio, compute_spectrogram
+from app.predict import labels, spectogram, predict
 from app.schemas import (
     HealthResponse,
     LabelsResponse,
@@ -46,24 +36,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Inference defaults (keep in sync with training)
-MODEL_PATH = "artifacts/cnn.pt"
-LABELS_PATH = MODEL_PATH + ".labels.json"
+
 SAMPLE_RATE = 22050
 DURATION = 4.0
 N_MELS = 64
-
-
-@lru_cache(maxsize=1)
-def load_model():
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(f"model not found: {MODEL_PATH}")
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = AudioCNN(num_classes=len(get_label_mapping()))
-    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
-    model.to(device)
-    model.eval()
-    return model, device
 
 
 def predict_from_waveform(y, sr, n_mels):
@@ -77,18 +53,6 @@ def predict_from_waveform(y, sr, n_mels):
     return probs, feat
 
 
-def spectrogram_to_png_base64(spec):
-    spec_min = float(np.min(spec))
-    spec_max = float(np.max(spec))
-    spec_range = spec_max - spec_min or 1.0
-    normalized = (spec - spec_min) / spec_range
-    pixels = (normalized * 255).clip(0, 255).astype(np.uint8)
-    image = Image.fromarray(pixels, mode="L")
-    buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
-    return base64.b64encode(buffer.getvalue()).decode("utf-8")
-
-
 @app.get("/health", response_model=HealthResponse)
 def health():
     return {"status": "ok"}
@@ -96,64 +60,24 @@ def health():
 
 @app.get("/labels", response_model=LabelsResponse)
 def labels():
-    label_to_index = get_label_mapping()
-    index_to_label = {v: k for k, v in label_to_index.items()}
+    _, index_to_label = labels()
     return {"labels": [index_to_label[i] for i in range(len(index_to_label))]}
 
 
-@app.post("/predict", response_model=PredictResponse)
-def predict_audio(
-    params: PredictRequest = Depends(),
-    file: UploadFile = File(...),
-):
-    return predict(file, params.sample_rate, params.duration, params.n_mels, params.top_k)
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No file provided.")
-
-    y, sr = _load_audio_from_upload(file, target_sr=params.sample_rate, duration=params.duration)
-    probs, spec = predict_from_waveform(y, sr, params.n_mels)
-    spec_payload = {
-        "image": spectrogram_to_png_base64(spec),
-        "features": spec.tolist(),
-        "shape": list(spec.shape),
-    }
-
-    label_to_index = get_label_mapping()
-    index_to_label = {v: k for k, v in label_to_index.items()}
-
-    top_k = max(1, min(params.top_k, len(probs)))
-    top_indices = np.argsort(probs)[-top_k:][::-1]
-    top_predictions = [
-        {"label": index_to_label[i], "confidence": float(probs[i])}
-        for i in top_indices
-    ]
-
-    return {
-        "top_prediction": top_predictions[0],
-        "top_k": top_predictions,
-        "spectrogram": spec_payload,
-    }
-
-
 @app.post("/spectrogram", response_model=SpectrogramResponse)
-def spectrogram(
-    params: SpectrogramRequest = Depends(),
-    file: UploadFile = File(...),
-):
+def spectrogram(params: SpectrogramRequest = Depends(), file: UploadFile = File(...)):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
+    _, spectogram_response = spectogram(file, params.sample_rate, params.duration, params.n_mels)
+    return spectogram_response
 
-    y, sr = _load_audio_from_upload(
-        file,
-        target_sr=params.sample_rate,
-        duration=params.duration,
-    )
-    _, spec = predict_from_waveform(y, sr, params.n_mels)
-    return {
-        "image": spectrogram_to_png_base64(spec),
-        "features": spec.tolist(),
-        "shape": list(spec.shape),
-    }
+
+@app.post("/predict", response_model=PredictResponse)
+def predict_audio(params: PredictRequest = Depends(), file: UploadFile = File(...),):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided.")
+    predict_response = predict(file, params.sample_rate, params.duration, params.n_mels, params.top_k)
+    return predict_response
 
 
 @app.websocket("/ws/predict")
