@@ -12,6 +12,11 @@ class SpectrogramRequest(BaseModel):
     duration: float = Field(4.0, gt=0.0, le=30.0)
     n_mels: int = Field(64, ge=16, le=256)
 
+class StreamConfig(BaseModel):
+    sample_rate: int = Field(22050, ge=8000, le=48000)
+    duration: float = Field(4.0, gt=0.0, le=30.0)
+    n_mels: int = Field(64, ge=16, le=256)
+
 class HealthResponse(BaseModel):
     status: str = Field(..., description="Service health status")
 

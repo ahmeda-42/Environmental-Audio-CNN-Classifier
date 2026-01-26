@@ -65,3 +65,12 @@ Endpoints:
 - `POST /predict` - upload audio and get top predictions
 - `POST /spectrogram` - upload audio and get spectrogram array
 - `WS /ws/predict` - stream raw float32 PCM and get predictions
+
+## React Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The app connects to `http://localhost:8000` by default.

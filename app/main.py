@@ -9,6 +9,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
 
 # Make local modules importable when running from the repo root
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -29,9 +30,19 @@ from app.schemas import (
     Prediction,
     SpectrogramRequest,
     SpectrogramResponse,
+    StreamConfig,
 )
 
 app = FastAPI(title="Environmental Audio CNN API")
+
+# Allow local frontend dev servers to call the API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Inference defaults (keep in sync with training)
 MODEL_PATH = "artifacts/cnn.pt"
@@ -98,8 +109,8 @@ def labels():
 
 @app.post("/predict", response_model=PredictResponse)
 def predict_audio(
-    file: UploadFile = File(...),
     params: PredictRequest = Depends(),
+    file: UploadFile = File(...),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
@@ -129,8 +140,8 @@ def predict_audio(
 
 @app.post("/spectrogram", response_model=SpectrogramResponse)
 def spectrogram(
-    file: UploadFile = File(...),
     params: SpectrogramRequest = Depends(),
+    file: UploadFile = File(...),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
@@ -154,11 +165,11 @@ async def websocket_predict(websocket: WebSocket):
     # First message should be JSON config for the stream
     config_raw = await websocket.receive_text()
     try:
-        config = json.loads(config_raw)
-        sample_rate = int(config.get("sample_rate", SAMPLE_RATE))
-        duration = float(config.get("duration", DURATION))
-        n_mels = int(config.get("n_mels", N_MELS))
-    except (ValueError, json.JSONDecodeError) as exc:
+        config = StreamConfig.model_validate_json(config_raw)
+        sample_rate = config.sample_rate
+        duration = config.duration
+        n_mels = config.n_mels
+    except Exception as exc:
         await websocket.send_json({"error": f"invalid config: {exc}"})
         await websocket.close()
         return
