@@ -18,21 +18,23 @@ class StreamConfig(BaseModel):
     n_mels: int = Field(64, ge=16, le=256)
 
 class HealthResponse(BaseModel):
-    status: str = Field(..., description="Service health status")
+    status: str 
 
 class LabelsResponse(BaseModel):
-    labels: List[str] = Field(..., description="Ordered list of class labels")
+    labels: List[str]
 
 class Prediction(BaseModel):
-    label: str = Field(..., description="Predicted class label")
-    confidence: float = Field(
-        ..., ge=0.0, le=1.0, description="Probability for the label"
-    )
+    label: str 
+    confidence: float 
 
 class PredictResponse(BaseModel):
     top_prediction: Prediction
     top_k: List[Prediction]
+    spectrogram: "SpectrogramResponse"
 
 class SpectrogramResponse(BaseModel):
+    image: str
+    features: List[List[float]]
     shape: List[int]
-    spectrogram: List[List[float]]
+
+PredictResponse.model_rebuild()

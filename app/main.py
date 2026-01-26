@@ -1,3 +1,4 @@
+import base64
 import io
 import json
 import os
@@ -6,6 +7,7 @@ import tempfile
 from functools import lru_cache
 
 import numpy as np
+from PIL import Image
 import torch
 import torch.nn.functional as F
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, WebSocket
@@ -95,6 +97,18 @@ def predict_from_waveform(y, sr, n_mels):
     return probs, feat
 
 
+def spectrogram_to_png_base64(spec):
+    spec_min = float(np.min(spec))
+    spec_max = float(np.max(spec))
+    spec_range = spec_max - spec_min or 1.0
+    normalized = (spec - spec_min) / spec_range
+    pixels = (normalized * 255).clip(0, 255).astype(np.uint8)
+    image = Image.fromarray(pixels, mode="L")
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+
 @app.get("/health", response_model=HealthResponse)
 def health():
     return {"status": "ok"}
@@ -120,7 +134,12 @@ def predict_audio(
         target_sr=params.sample_rate,
         duration=params.duration,
     )
-    probs, _ = predict_from_waveform(y, sr, params.n_mels)
+    probs, spec = predict_from_waveform(y, sr, params.n_mels)
+    spec_payload = {
+        "image": spectrogram_to_png_base64(spec),
+        "features": spec.tolist(),
+        "shape": list(spec.shape),
+    }
 
     label_to_index = get_label_mapping()
     index_to_label = {v: k for k, v in label_to_index.items()}
@@ -135,6 +154,7 @@ def predict_audio(
     return {
         "top_prediction": top_predictions[0],
         "top_k": top_predictions,
+        "spectrogram": spec_payload,
     }
 
 
@@ -153,8 +173,9 @@ def spectrogram(
     )
     _, spec = predict_from_waveform(y, sr, params.n_mels)
     return {
+        "image": spectrogram_to_png_base64(spec),
+        "features": spec.tolist(),
         "shape": list(spec.shape),
-        "spectrogram": spec.tolist(),
     }
 
 
