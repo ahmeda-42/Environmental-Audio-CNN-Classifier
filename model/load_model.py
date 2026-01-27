@@ -11,4 +11,4 @@ def load_model(num_classes = 10):
     model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
     model.to(device)
     model.eval()
-    return model
+    return model, device
