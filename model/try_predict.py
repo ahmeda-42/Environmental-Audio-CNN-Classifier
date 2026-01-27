@@ -1,4 +1,4 @@
-from predict import predict
+from model.predict import predict
 
 AUDIO_PATHS = [
     "data/UrbanSound8K/audio/fold1/21684-9-0-39.wav",

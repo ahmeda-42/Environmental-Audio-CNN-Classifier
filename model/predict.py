@@ -13,6 +13,7 @@ if MODEL_DIR not in sys.path:
     sys.path.insert(0, MODEL_DIR)
 
 from model.load_model import MODEL_PATH, load_model
+from config import DURATION, N_MELS, SAMPLE_RATE
 from model.dataset import load_label_mapping
 from preprocessing.audio_features import load_audio, compute_spectrogram
 from preprocessing.visualize_spectogram import spectogram_to_base64
@@ -25,7 +26,7 @@ def labels():
     return label_to_index, index_to_label
 
 
-def spectogram(audio_path, sample_rate=22050, duration=4.0, n_mels=64):
+def spectogram(audio_path, sample_rate=SAMPLE_RATE, duration=DURATION, n_mels=N_MELS):
     # Load audio from audio path and compute spectrogram
     y, sr = load_audio(audio_path, sample_rate, duration)
     spectogram = compute_spectrogram(y, sr, n_mels=n_mels)
@@ -40,7 +41,7 @@ def spectogram(audio_path, sample_rate=22050, duration=4.0, n_mels=64):
     return spectogram, spectogram_response
 
 
-def predict(audio_path, sample_rate=22050, duration=4.0, n_mels=64, top_k=3):
+def predict(audio_path, sample_rate=SAMPLE_RATE, duration=DURATION, n_mels=N_MELS, top_k=3):
     # Load label mapping to translate indices -> class names
     label_to_index, index_to_label = labels()
 

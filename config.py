@@ -1,0 +1,14 @@
+MODEL_PATH = "artifacts/cnn.pt"
+LABELS_PATH = MODEL_PATH + ".labels.json"
+CSV_PATH = "data/urbansound8k.csv"
+
+SAMPLE_RATE = 22050
+DURATION = 4.0
+N_MELS = 64
+N_FFT = 1024
+HOP_LENGTH = 512
+
+BATCH_SIZE = 32
+LEARNING_RATE = 1e-3
+EPOCHS = 5
+SEED = 67

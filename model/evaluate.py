@@ -12,12 +12,9 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from dataset import AudioDataset, build_label_mapping, load_label_mapping
+from model.dataset import AudioDataset, build_label_mapping, load_label_mapping
 from model.load_model import MODEL_PATH, load_model
-
-
-CSV_PATH = "data/urbansound8k.csv"
-BATCH_SIZE = 32
+from config import BATCH_SIZE, CSV_PATH
 
 
 def ensure_fold_column(df):

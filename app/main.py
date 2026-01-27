@@ -3,7 +3,8 @@ import tempfile
 from functools import lru_cache
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from model.predict import labels, spectogram, predict
+from model.predict import labels as get_labels, spectogram as build_spectrogram, predict as run_predict
+from config import DURATION, N_MELS, SAMPLE_RATE
 from app.websocket_handler import handle_websocket_predict
 from app.schemas import (
     HealthResponse,
@@ -28,24 +29,19 @@ app.add_middleware(
 )
 
 
-SAMPLE_RATE = 22050
-DURATION = 4.0
-N_MELS = 64
-
-
 @app.get("/health", response_model=HealthResponse)
 def health():
     return {"status": "ok"}
 
 
 @app.get("/labels", response_model=LabelsResponse)
-def labels():
-    _, index_to_label = labels()
+def labels_endpoint():
+    _, index_to_label = get_labels()
     return {"labels": [index_to_label[i] for i in range(len(index_to_label))]}
 
 
 @app.post("/spectrogram", response_model=SpectrogramResponse)
-def spectrogram(params: SpectrogramRequest = Depends(), upload: UploadFile = File(...)):
+def spectrogram_endpoint(params: SpectrogramRequest = Depends(), upload: UploadFile = File(...)):
     if not upload.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
     suffix = os.path.splitext(upload.filename or "")[1]
@@ -53,14 +49,14 @@ def spectrogram(params: SpectrogramRequest = Depends(), upload: UploadFile = Fil
         tmp.write(upload.file.read())
         tmp_path = tmp.name
     try:
-        _, spectogram_response = spectogram(tmp_path, params.sample_rate, params.duration, params.n_mels)
+        _, spectogram_response = build_spectrogram(tmp_path, params.sample_rate, params.duration, params.n_mels)
     finally:
         os.remove(tmp_path)
     return spectogram_response
 
 
 @app.post("/predict", response_model=PredictResponse)
-def predict_audio(params: PredictRequest = Depends(), upload: UploadFile = File(...),):
+def predict_audio(params: PredictRequest = Depends(), upload: UploadFile = File(...)):
     if not upload.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
     suffix = os.path.splitext(upload.filename or "")[1]
@@ -68,7 +64,7 @@ def predict_audio(params: PredictRequest = Depends(), upload: UploadFile = File(
         tmp.write(upload.file.read())
         tmp_path = tmp.name
     try:
-        predict_response = predict(tmp_path, params.sample_rate, params.duration, params.n_mels, params.top_k)
+        predict_response = run_predict(tmp_path, params.sample_rate, params.duration, params.n_mels, params.top_k)
     finally:
         os.remove(tmp_path)
     return predict_response

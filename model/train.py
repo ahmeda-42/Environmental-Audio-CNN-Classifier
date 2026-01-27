@@ -12,19 +12,19 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from dataset import AudioDataset, build_label_mapping, save_label_mapping
-from cnn import AudioCNN
-
-
-CSV_PATH = "data/urbansound8k.csv"
-MODEL_OUT = "artifacts/cnn.pt"
-EPOCHS = 5
-BATCH_SIZE = 32
-LEARNING_RATE = 1e-3
-SEED = 67
-SAMPLE_RATE = 22050
-DURATION = 4.0
-N_MELS = 64
+from model.dataset import AudioDataset, build_label_mapping, save_label_mapping
+from model.cnn import AudioCNN
+from config import (
+    BATCH_SIZE,
+    CSV_PATH,
+    DURATION,
+    EPOCHS,
+    LEARNING_RATE,
+    MODEL_PATH,
+    N_MELS,
+    SAMPLE_RATE,
+    SEED,
+)
 
 
 def ensure_fold_column(df):
@@ -145,9 +145,9 @@ def main():
         if val_acc > best_acc:
             best_acc = val_acc
             # Save weights and label mapping together
-            os.makedirs(os.path.dirname(MODEL_OUT), exist_ok=True)
-            torch.save(model.state_dict(), MODEL_OUT)
-            save_label_mapping(MODEL_OUT + ".labels.json", label_to_index)
+            os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+            torch.save(model.state_dict(), MODEL_PATH)
+            save_label_mapping(MODEL_PATH + ".labels.json", label_to_index)
 
     # Final summary of the best validation accuracy
     print(f"best_val_acc={best_acc:.3f}")

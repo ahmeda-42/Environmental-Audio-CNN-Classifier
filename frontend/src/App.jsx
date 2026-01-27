@@ -70,6 +70,12 @@ export default function App() {
     }
     const data = await response.json();
     setPredictResult(data);
+    if (data.spectrogram?.features) {
+      setSpectrogram(data.spectrogram.features);
+      requestAnimationFrame(() =>
+        drawSpectrogram(canvasRef.current, data.spectrogram.features)
+      );
+    }
   }
 
   async function handleSpectrogram() {
@@ -88,8 +94,10 @@ export default function App() {
       return;
     }
     const data = await response.json();
-    setSpectrogram(data.spectrogram);
-    requestAnimationFrame(() => drawSpectrogram(canvasRef.current, data.spectrogram));
+    setSpectrogram(data.features);
+    requestAnimationFrame(() =>
+      drawSpectrogram(canvasRef.current, data.features)
+    );
   }
 
   async function startStream() {
