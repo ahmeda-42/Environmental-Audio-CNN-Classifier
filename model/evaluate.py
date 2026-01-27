@@ -13,11 +13,10 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from dataset import AudioDataset, build_label_mapping, load_label_mapping
-from cnn import AudioCNN
+from model.load_model import MODEL_PATH, load_model
 
 
 CSV_PATH = "data/urbansound8k.csv"
-MODEL_PATH = "artifacts/cnn.pt"
 BATCH_SIZE = 32
 
 
@@ -75,11 +74,7 @@ def main():
     test_loader = DataLoader(test_ds, batch_size=BATCH_SIZE, shuffle=False)
 
     # Load model weights for evaluation
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = AudioCNN(num_classes=len(label_to_index))
-    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
-    model.to(device)
-    model.eval()
+    model, device = load_model(num_classes=len(label_to_index))
 
     # Overall accuracy and per-sample predictions
     acc, y_true, y_pred = evaluate(model, test_loader, device)

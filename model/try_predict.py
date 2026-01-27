@@ -7,4 +7,5 @@ AUDIO_PATHS = [
 ]
 
 for audio_path in AUDIO_PATHS:
-    predict(audio_path, sample_rate=22050, duration=4.0, n_mels=64)
+    data = predict(audio_path, sample_rate=22050, duration=4.0, n_mels=64)
+    print(data)

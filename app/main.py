@@ -1,12 +1,10 @@
 import os
 import tempfile
 from functools import lru_cache
-import numpy as np
-import torch
-import torch.nn.functional as F
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from model.predict import labels, spectogram, predict
+from app.websocket_handler import handle_websocket_predict
 from app.schemas import (
     HealthResponse,
     LabelsResponse,
@@ -18,7 +16,7 @@ from app.schemas import (
     StreamConfig,
 )
 
-app = FastAPI(title="Environmental Audio CNN API")
+app = FastAPI(title="Environmental Audio CNN Classifier API")
 
 # Allow local frontend dev servers to call the API
 app.add_middleware(
@@ -78,55 +76,4 @@ def predict_audio(params: PredictRequest = Depends(), upload: UploadFile = File(
 
 @app.websocket("/ws/predict")
 async def websocket_predict(websocket: WebSocket):
-    await websocket.accept()
-
-    # First message should be JSON config for the stream
-    config_raw = await websocket.receive_text()
-    try:
-        config = StreamConfig.model_validate_json(config_raw)
-        sample_rate = config.sample_rate
-        duration = config.duration
-        n_mels = config.n_mels
-    except Exception as exc:
-        await websocket.send_json({"error": f"invalid config: {exc}"})
-        await websocket.close()
-        return
-
-    target_len = int(sample_rate * duration)
-    buffer = np.zeros(0, dtype=np.float32)
-
-    # Client sends raw float32 mono PCM in binary messages
-    while True:
-        message = await websocket.receive()
-        if "bytes" in message:
-            chunk = np.frombuffer(message["bytes"], dtype=np.float32)
-            if chunk.size == 0:
-                continue
-            buffer = np.concatenate([buffer, chunk])
-
-            # Keep only the most recent window
-            if buffer.size > target_len * 2:
-                buffer = buffer[-target_len * 2 :]
-
-            if buffer.size >= target_len:
-                window = buffer[-target_len:]
-                feat = compute_spectrogram(window, sample_rate, n_mels=n_mels)
-                x = torch.tensor(feat).unsqueeze(0).unsqueeze(0)
-                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                model = load_model(MODEL_PATH, num_classes=idk, device=device)
-                with torch.no_grad():
-                    logits = model(x.to(device))
-                    probs = F.softmax(logits, dim=1).cpu().numpy()[0]
-                label_to_index = load_label_mapping(MODEL_PATH + ".labels.json")
-                index_to_label = {v: k for k, v in label_to_index.items()}
-                pred_idx = int(np.argmax(probs))
-                await websocket.send_json(
-                    {
-                        "label": index_to_label[pred_idx],
-                        "confidence": float(probs[pred_idx]),
-                    }
-                )
-        elif "text" in message:
-            # Allow client to reset the buffer
-            if message["text"].strip().lower() == "reset":
-                buffer = np.zeros(0, dtype=np.float32)
+    await handle_websocket_predict(websocket)

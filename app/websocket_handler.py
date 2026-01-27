@@ -1,0 +1,65 @@
+import numpy as np
+import torch
+import torch.nn.functional as F
+from fastapi import WebSocket
+from app.schemas import StreamConfig
+from model.load_model import MODEL_PATH, load_model
+from preprocessing.audio_features import compute_spectrogram
+from model.dataset import load_label_mapping
+
+async def handle_websocket_predict(websocket: WebSocket):
+    await websocket.accept()
+
+    # First message should be JSON config for the stream
+    config_raw = await websocket.receive_text()
+    try:
+        config = StreamConfig.model_validate_json(config_raw)
+        sample_rate = config.sample_rate
+        duration = config.duration
+        n_mels = config.n_mels
+    except Exception as exc:
+        await websocket.send_json({"error": f"invalid config: {exc}"})
+        await websocket.close()
+        return
+
+    target_len = int(sample_rate * duration)
+    buffer = np.zeros(0, dtype=np.float32)
+
+    # Client sends raw float32 mono PCM in binary messages
+    while True:
+        message = await websocket.receive()
+        if "bytes" in message:
+            chunk = np.frombuffer(message["bytes"], dtype=np.float32)
+            if chunk.size == 0:
+                continue
+            buffer = np.concatenate([buffer, chunk])
+
+            # Keep only the most recent window
+            if buffer.size > target_len * 2:
+                buffer = buffer[-target_len * 2 :]
+
+            if buffer.size >= target_len:
+                window = buffer[-target_len:]
+                feat = compute_spectrogram(window, sample_rate, n_mels=n_mels)
+                x = torch.tensor(feat).unsqueeze(0).unsqueeze(0)
+
+                label_to_index = load_label_mapping(MODEL_PATH + ".labels.json")
+                index_to_label = {v: k for k, v in label_to_index.items()}
+
+                model, device = load_model(num_classes=len(label_to_index))
+
+                with torch.no_grad():
+                    logits = model(x.to(device))
+                    probs = F.softmax(logits, dim=1).cpu().numpy()[0]
+
+                pred_idx = int(np.argmax(probs))
+                await websocket.send_json(
+                    {
+                        "label": index_to_label[pred_idx],
+                        "confidence": float(probs[pred_idx]),
+                    }
+                )
+        elif "text" in message:
+            # Allow client to reset the buffer
+            if message["text"].strip().lower() == "reset":
+                buffer = np.zeros(0, dtype=np.float32)

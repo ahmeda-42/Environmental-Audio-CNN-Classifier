@@ -12,22 +12,10 @@ if ROOT_DIR not in sys.path:
 if MODEL_DIR not in sys.path:
     sys.path.insert(0, MODEL_DIR)
 
-from model.cnn import AudioCNN
+from model.load_model import MODEL_PATH, load_model
 from model.dataset import load_label_mapping
 from preprocessing.audio_features import load_audio, compute_spectrogram
-from preprocessing.visualization import spectrogram_to_png_base64
-
-
-MODEL_PATH = "artifacts/cnn.pt"
-
-
-def load_model(model_path, num_classes, device):
-    # Build the model and load trained weights
-    model = AudioCNN(num_classes=num_classes)
-    model.load_state_dict(torch.load(model_path, map_location=device))
-    model.to(device)
-    model.eval()
-    return model
+from preprocessing.visualize_spectogram import spectogram_to_base64
 
 
 def labels():
@@ -44,7 +32,7 @@ def spectogram(audio_path, sample_rate=22050, duration=4.0, n_mels=64):
 
     # Convert spectrogram to PNG base64 image
     spectogram_response = {
-        "image": spectrogram_to_png_base64(spectogram),
+        "image": spectogram_to_base64(spectogram),
         "features": spectogram.tolist(),
         "shape": list(spectogram.shape),
     }
@@ -61,8 +49,7 @@ def predict(audio_path, sample_rate=22050, duration=4.0, n_mels=64, top_k=3):
     x = torch.tensor(spectogram).unsqueeze(0).unsqueeze(0)
 
     # Load the model and run inference
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = load_model(MODEL_PATH, num_classes=len(label_to_index), device=device)
+    model, device = load_model(num_classes=len(label_to_index))
     with torch.no_grad():
         logits = model(x.to(device))
         probs = F.softmax(logits, dim=1).cpu().numpy()[0]
