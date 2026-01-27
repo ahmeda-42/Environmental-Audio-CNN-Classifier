@@ -1,19 +1,12 @@
-import base64
-import io
-import json
 import os
-import sys
 import tempfile
 from functools import lru_cache
-
 import numpy as np
-from PIL import Image
 import torch
 import torch.nn.functional as F
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-
-from app.predict import labels, spectogram, predict
+from model.predict import labels, spectogram, predict
 from app.schemas import (
     HealthResponse,
     LabelsResponse,
@@ -54,18 +47,32 @@ def labels():
 
 
 @app.post("/spectrogram", response_model=SpectrogramResponse)
-def spectrogram(params: SpectrogramRequest = Depends(), file: UploadFile = File(...)):
-    if not file.filename:
+def spectrogram(params: SpectrogramRequest = Depends(), upload: UploadFile = File(...)):
+    if not upload.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
-    _, spectogram_response = spectogram(file, params.sample_rate, params.duration, params.n_mels)
+    suffix = os.path.splitext(upload.filename or "")[1]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(upload.file.read())
+        tmp_path = tmp.name
+    try:
+        _, spectogram_response = spectogram(tmp_path, params.sample_rate, params.duration, params.n_mels)
+    finally:
+        os.remove(tmp_path)
     return spectogram_response
 
 
 @app.post("/predict", response_model=PredictResponse)
-def predict_audio(params: PredictRequest = Depends(), file: UploadFile = File(...),):
-    if not file.filename:
+def predict_audio(params: PredictRequest = Depends(), upload: UploadFile = File(...),):
+    if not upload.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
-    predict_response = predict(file, params.sample_rate, params.duration, params.n_mels, params.top_k)
+    suffix = os.path.splitext(upload.filename or "")[1]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(upload.file.read())
+        tmp_path = tmp.name
+    try:
+        predict_response = predict(tmp_path, params.sample_rate, params.duration, params.n_mels, params.top_k)
+    finally:
+        os.remove(tmp_path)
     return predict_response
 
 
