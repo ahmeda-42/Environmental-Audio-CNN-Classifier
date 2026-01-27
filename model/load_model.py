@@ -1,7 +1,8 @@
 import torch
 from model.cnn import AudioCNN
+from model.train import MODEL_OUT
 
-MODEL_PATH = "artifacts/cnn.pt"
+MODEL_PATH = MODEL_OUT
 
 def load_model(num_classes = 10):
     # Build the model and load trained weights
