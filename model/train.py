@@ -24,6 +24,11 @@ from config import (
     LEARNING_RATE,
     MODEL_PATH,
     N_MELS,
+    NUM_FREQ_MASKS,
+    NUM_TIME_MASKS,
+    SPEC_AUGMENT,
+    FREQ_MASK_PARAM,
+    TIME_MASK_PARAM,
     SAMPLE_RATE,
     SEED,
 )
@@ -114,6 +119,11 @@ def main():
         sample_rate=SAMPLE_RATE,
         duration=DURATION,
         n_mels=N_MELS,
+        augment=SPEC_AUGMENT,
+        time_mask_param=TIME_MASK_PARAM,
+        freq_mask_param=FREQ_MASK_PARAM,
+        num_time_masks=NUM_TIME_MASKS,
+        num_freq_masks=NUM_FREQ_MASKS,
     )
     val_ds = AudioDataset(
         val_df,
@@ -121,6 +131,11 @@ def main():
         sample_rate=SAMPLE_RATE,
         duration=DURATION,
         n_mels=N_MELS,
+        augment=False,
+        time_mask_param=TIME_MASK_PARAM,
+        freq_mask_param=FREQ_MASK_PARAM,
+        num_time_masks=NUM_TIME_MASKS,
+        num_freq_masks=NUM_FREQ_MASKS,
     )
     
     # Batch loaders for efficient training

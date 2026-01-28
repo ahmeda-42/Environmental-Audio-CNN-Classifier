@@ -1,6 +1,14 @@
 import numpy as np
 import librosa
-from config import DURATION, HOP_LENGTH, N_FFT, N_MELS, SAMPLE_RATE
+from config import (
+    DURATION,
+    HOP_LENGTH,
+    N_FFT,
+    N_MELS,
+    RMS_NORMALIZE,
+    RMS_TARGET,
+    SAMPLE_RATE,
+)
 
 # Load audio file as waveform and resample to target sample rate and duration
 def load_audio(audio_path, target_sr=SAMPLE_RATE, duration=DURATION):
@@ -11,6 +19,10 @@ def load_audio(audio_path, target_sr=SAMPLE_RATE, duration=DURATION):
         y = np.pad(y, (0, pad_width), mode="constant")
     else:
         y = y[:target_len]
+    if RMS_NORMALIZE:
+        rms = np.sqrt(np.mean(y**2)) if y.size else 0.0
+        if rms > 0:
+            y = y * (RMS_TARGET / rms)
     return y, target_sr
 
 # Compute log-mel spectrogram from waveform (manual STFT + mel filterbank)

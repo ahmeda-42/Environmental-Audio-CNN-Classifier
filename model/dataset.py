@@ -13,7 +13,21 @@ def build_label_mapping(labels):
 
 
 class AudioDataset(Dataset):
-    def __init__(self, dataframe, label_to_index, sample_rate=22050, duration=4.0, n_mels=64, n_fft=1024, hop_length=512):
+    def __init__(
+        self,
+        dataframe,
+        label_to_index,
+        sample_rate=22050,
+        duration=4.0,
+        n_mels=64,
+        n_fft=1024,
+        hop_length=512,
+        augment=False,
+        time_mask_param=20,
+        freq_mask_param=8,
+        num_time_masks=2,
+        num_freq_masks=2,
+    ):
         # Store metadata and feature parameters
         self.df = dataframe.reset_index(drop=True)
         self.label_to_index = label_to_index
@@ -22,6 +36,32 @@ class AudioDataset(Dataset):
         self.n_mels = n_mels
         self.n_fft = n_fft
         self.hop_length = hop_length
+        self.augment = augment
+        self.time_mask_param = time_mask_param
+        self.freq_mask_param = freq_mask_param
+        self.num_time_masks = num_time_masks
+        self.num_freq_masks = num_freq_masks
+
+    def _apply_spec_augment(self, feat):
+        # SpecAugment: random time/frequency masking
+        augmented = feat.copy()
+        num_mels, num_frames = augmented.shape
+
+        for _ in range(self.num_freq_masks):
+            f = np.random.randint(0, self.freq_mask_param + 1)
+            if f == 0 or f >= num_mels:
+                continue
+            f0 = np.random.randint(0, num_mels - f)
+            augmented[f0 : f0 + f, :] = 0.0
+
+        for _ in range(self.num_time_masks):
+            t = np.random.randint(0, self.time_mask_param + 1)
+            if t == 0 or t >= num_frames:
+                continue
+            t0 = np.random.randint(0, num_frames - t)
+            augmented[:, t0 : t0 + t] = 0.0
+
+        return augmented
 
     def __len__(self):
         # Number of audio samples in the split
@@ -42,7 +82,9 @@ class AudioDataset(Dataset):
             n_fft=self.n_fft,
             hop_length=self.hop_length,
         )
-        
+        if self.augment:
+            feat = self._apply_spec_augment(feat)
+
         # Add a channel dimension for CNN input: (1, F, T)
         x = np.expand_dims(feat, axis=0)
         x = torch.tensor(x, dtype=torch.float32)
