@@ -22,6 +22,10 @@ async def handle_websocket_predict(websocket: WebSocket):
         await websocket.close()
         return
 
+    label_to_index = load_label_mapping(MODEL_PATH + ".labels.json")
+    index_to_label = {v: k for k, v in label_to_index.items()}
+    model, device = load_model(num_classes=len(label_to_index))
+
     target_len = int(sample_rate * duration)
     buffer = np.zeros(0, dtype=np.float32)
 
@@ -42,11 +46,6 @@ async def handle_websocket_predict(websocket: WebSocket):
                 window = buffer[-target_len:]
                 feat = compute_spectrogram(window, sample_rate, n_mels=n_mels)
                 x = torch.tensor(feat).unsqueeze(0).unsqueeze(0)
-
-                label_to_index = load_label_mapping(MODEL_PATH + ".labels.json")
-                index_to_label = {v: k for k, v in label_to_index.items()}
-
-                model, device = load_model(num_classes=len(label_to_index))
 
                 with torch.no_grad():
                     logits = model(x.to(device))

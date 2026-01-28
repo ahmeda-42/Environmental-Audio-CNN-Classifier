@@ -3,7 +3,11 @@ import tempfile
 from functools import lru_cache
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from model.predict import labels as get_labels, spectogram as build_spectrogram, predict as run_predict
+from model.predict import (
+    labels as get_labels,
+    compute_spectrogram_item,
+    predict as run_predict,
+)
 from config import DURATION, N_MELS, SAMPLE_RATE
 from app.websocket_handler import handle_websocket_predict
 from app.schemas import (
@@ -49,10 +53,12 @@ def spectrogram_endpoint(params: SpectrogramRequest = Depends(), upload: UploadF
         tmp.write(upload.file.read())
         tmp_path = tmp.name
     try:
-        _, spectogram_response = build_spectrogram(tmp_path, params.sample_rate, params.duration, params.n_mels)
+        _, spectrogram_response = compute_spectrogram_item(
+            tmp_path, params.sample_rate, params.duration, params.n_mels
+        )
     finally:
         os.remove(tmp_path)
-    return spectogram_response
+    return spectrogram_response
 
 
 @app.post("/predict", response_model=PredictResponse)

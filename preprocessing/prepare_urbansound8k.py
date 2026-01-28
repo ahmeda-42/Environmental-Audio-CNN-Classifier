@@ -3,7 +3,6 @@ import pandas as pd
 
 
 def find_dataset_root(dataset_root):
-
     print(f"finding dataset root in: {dataset_root}")
     if not os.path.exists(dataset_root):
         raise FileNotFoundError(

@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 import matplotlib.cm as cm
 
-def spectogram_to_base64(spec):
+def spectrogram_to_base64(spec):
     # Normalize safely to [0, 1]
     spec = spec.astype(np.float32)
     spec_min = float(np.min(spec))

@@ -16,7 +16,7 @@ from model.load_model import MODEL_PATH, load_model
 from config import DURATION, N_MELS, SAMPLE_RATE
 from model.dataset import load_label_mapping
 from preprocessing.audio_features import load_audio, compute_spectrogram
-from preprocessing.visualize_spectogram import spectogram_to_base64
+from preprocessing.visualize_spectrogram import spectrogram_to_base64
 
 
 def labels():
@@ -26,19 +26,18 @@ def labels():
     return label_to_index, index_to_label
 
 
-def spectogram(audio_path, sample_rate=SAMPLE_RATE, duration=DURATION, n_mels=N_MELS):
+def compute_spectrogram_item(audio_path, sample_rate=SAMPLE_RATE, duration=DURATION, n_mels=N_MELS):
     # Load audio from audio path and compute spectrogram
     y, sr = load_audio(audio_path, sample_rate, duration)
-    spectogram = compute_spectrogram(y, sr, n_mels=n_mels)
+    features = compute_spectrogram(y, sr, n_mels=n_mels)
 
     # Convert spectrogram to PNG base64 image
-    spectogram_response = {
-        "image": spectogram_to_base64(spectogram),
-        "features": spectogram.tolist(),
-        "shape": list(spectogram.shape),
+    spectrogram_item = {
+        "image": spectrogram_to_base64(features),
+        "features": features.tolist(),
+        "shape": list(features.shape),
     }
-
-    return spectogram, spectogram_response
+    return features, spectrogram_item
 
 
 def predict(audio_path, sample_rate=SAMPLE_RATE, duration=DURATION, n_mels=N_MELS, top_k=3):
@@ -46,8 +45,10 @@ def predict(audio_path, sample_rate=SAMPLE_RATE, duration=DURATION, n_mels=N_MEL
     label_to_index, index_to_label = labels()
 
     # Convert raw audio to a spectrogram tensor
-    spectogram, spectogram_response = spectogram(audio_path, sample_rate, duration, n_mels)
-    x = torch.tensor(spectogram).unsqueeze(0).unsqueeze(0)
+    features, spectrogram_item = compute_spectrogram_item(
+        audio_path, sample_rate, duration, n_mels
+    )
+    x = torch.tensor(features).unsqueeze(0).unsqueeze(0)
 
     # Load the model and run inference
     model, device = load_model(num_classes=len(label_to_index))
@@ -66,5 +67,5 @@ def predict(audio_path, sample_rate=SAMPLE_RATE, duration=DURATION, n_mels=N_MEL
     return {
         "top_prediction": top_predictions[0],
         "top_k": top_predictions,
-        "spectrogram": spectogram_response,
+        "spectrogram": spectrogram_item,
     }
