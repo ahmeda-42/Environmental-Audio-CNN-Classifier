@@ -1,6 +1,7 @@
 MODEL_PATH = "artifacts/cnn.pt"
 LABELS_PATH = MODEL_PATH + ".labels.json"
 CSV_PATH = "data/urbansound8k.csv"
+DATASET_ROOT = "data/UrbanSound8K"
 
 SAMPLE_RATE = 22050
 DURATION = 4.0

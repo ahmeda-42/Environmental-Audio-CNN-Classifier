@@ -14,9 +14,11 @@ if ROOT_DIR not in sys.path:
 
 from model.dataset import AudioDataset, build_label_mapping, save_label_mapping
 from model.cnn import AudioCNN
+from preprocessing.prepare_urbansound8k import build_csv
 from config import (
     BATCH_SIZE,
     CSV_PATH,
+    DATASET_ROOT,
     DURATION,
     EPOCHS,
     LEARNING_RATE,
@@ -92,6 +94,9 @@ def eval_epoch(model, loader, criterion, device):
 
 def main():
     set_seed(SEED)
+
+    if not os.path.exists(CSV_PATH):
+        build_csv(DATASET_ROOT, CSV_PATH)
 
     # Load metadata and build label mapping
     df = pd.read_csv(CSV_PATH)

@@ -15,7 +15,7 @@ def load_audio(audio_path, target_sr=SAMPLE_RATE, duration=DURATION):
 
 # Compute log-mel spectrogram from waveform (manual STFT + mel filterbank)
 def compute_spectrogram(y, sr=SAMPLE_RATE, n_mels=N_MELS, n_fft=N_FFT, hop_length=HOP_LENGTH):
-    # 1) STFT -> magnitude^2 (power spectrogram)
+    # 1) Short Time Fourier Transform (STFT) -> magnitude^2 (power spectrogram)
     D = librosa.stft(y, n_fft=n_fft, hop_length=hop_length)
     power_spec = np.abs(D) ** 2
 

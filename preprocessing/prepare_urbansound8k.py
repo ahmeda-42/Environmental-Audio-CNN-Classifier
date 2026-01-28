@@ -1,10 +1,10 @@
-import argparse
 import os
-
 import pandas as pd
 
 
 def find_dataset_root(dataset_root):
+
+    print(f"finding dataset root in: {dataset_root}")
     if not os.path.exists(dataset_root):
         raise FileNotFoundError(
             f"dataset root not found: {dataset_root}. "
@@ -32,6 +32,8 @@ def find_dataset_root(dataset_root):
 
 
 def build_csv(dataset_root, output_csv):
+    os.makedirs(os.path.dirname(output_csv), exist_ok=True)
+    
     dataset_root = find_dataset_root(dataset_root)
     metadata_path = os.path.join(dataset_root, "metadata", "UrbanSound8K.csv")
 
@@ -52,17 +54,4 @@ def build_csv(dataset_root, output_csv):
     df = pd.DataFrame(rows)
     df.to_csv(output_csv, index=False)
 
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset-root", required=True)
-    parser.add_argument("--output-csv", required=True)
-    args = parser.parse_args()
-
-    os.makedirs(os.path.dirname(args.output_csv), exist_ok=True)
-    build_csv(args.dataset_root, args.output_csv)
-    print(f"wrote {args.output_csv}")
-
-
-if __name__ == "__main__":
-    main()
+    print(f"wrote {output_csv}")
