@@ -45,12 +45,12 @@ def labels_endpoint():
 
 
 @app.post("/spectrogram", response_model=SpectrogramResponse)
-def spectrogram_endpoint(params: SpectrogramRequest = Depends(), upload: UploadFile = File(...)):
-    if not upload.filename:
+def spectrogram_endpoint(params: SpectrogramRequest = Depends(), file: UploadFile = File(...)):
+    if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
-    suffix = os.path.splitext(upload.filename or "")[1]
+    suffix = os.path.splitext(file.filename or "")[1]
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(upload.file.read())
+        tmp.write(file.file.read())
         tmp_path = tmp.name
     try:
         _, spectrogram_response = compute_spectrogram_item(
@@ -62,12 +62,12 @@ def spectrogram_endpoint(params: SpectrogramRequest = Depends(), upload: UploadF
 
 
 @app.post("/predict", response_model=PredictResponse)
-def predict_audio(params: PredictRequest = Depends(), upload: UploadFile = File(...)):
-    if not upload.filename:
+def predict_audio(params: PredictRequest = Depends(), file: UploadFile = File(...)):
+    if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
-    suffix = os.path.splitext(upload.filename or "")[1]
+    suffix = os.path.splitext(file.filename or "")[1]
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(upload.file.read())
+        tmp.write(file.file.read())
         tmp_path = tmp.name
     try:
         predict_response = run_predict(tmp_path, params.sample_rate, params.duration, params.n_mels, params.top_k)

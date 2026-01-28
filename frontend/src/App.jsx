@@ -1,6 +1,12 @@
 import React, { useMemo, useRef, useState } from "react";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
+
+function toWebSocketUrl(baseUrl) {
+  if (baseUrl.startsWith("https://")) return baseUrl.replace("https://", "wss://");
+  if (baseUrl.startsWith("http://")) return baseUrl.replace("http://", "ws://");
+  return baseUrl;
+}
 
 function formatPct(value) {
   return `${(value * 100).toFixed(1)}%`;
@@ -60,21 +66,25 @@ export default function App() {
     const form = new FormData();
     form.append("file", file);
 
-    const response = await fetch(`${API_BASE}/predict?top_k=5`, {
-      method: "POST",
-      body: form,
-    });
-    if (!response.ok) {
-      setError(`Predict failed: ${await response.text()}`);
-      return;
-    }
-    const data = await response.json();
-    setPredictResult(data);
-    if (data.spectrogram?.features) {
-      setSpectrogram(data.spectrogram.features);
-      requestAnimationFrame(() =>
-        drawSpectrogram(canvasRef.current, data.spectrogram.features)
-      );
+    try {
+      const response = await fetch(`${API_BASE}/predict?top_k=5`, {
+        method: "POST",
+        body: form,
+      });
+      if (!response.ok) {
+        setError(`Predict failed: ${await response.text()}`);
+        return;
+      }
+      const data = await response.json();
+      setPredictResult(data);
+      if (data.spectrogram?.features) {
+        setSpectrogram(data.spectrogram.features);
+        requestAnimationFrame(() =>
+          drawSpectrogram(canvasRef.current, data.spectrogram.features)
+        );
+      }
+    } catch (err) {
+      setError(`Predict failed: ${err}`);
     }
   }
 
@@ -85,25 +95,29 @@ export default function App() {
     const form = new FormData();
     form.append("file", file);
 
-    const response = await fetch(`${API_BASE}/spectrogram`, {
-      method: "POST",
-      body: form,
-    });
-    if (!response.ok) {
-      setError(`Spectrogram failed: ${await response.text()}`);
-      return;
+    try {
+      const response = await fetch(`${API_BASE}/spectrogram`, {
+        method: "POST",
+        body: form,
+      });
+      if (!response.ok) {
+        setError(`Spectrogram failed: ${await response.text()}`);
+        return;
+      }
+      const data = await response.json();
+      setSpectrogram(data.features);
+      requestAnimationFrame(() =>
+        drawSpectrogram(canvasRef.current, data.features)
+      );
+    } catch (err) {
+      setError(`Spectrogram failed: ${err}`);
     }
-    const data = await response.json();
-    setSpectrogram(data.features);
-    requestAnimationFrame(() =>
-      drawSpectrogram(canvasRef.current, data.features)
-    );
   }
 
   async function startStream() {
     setError(null);
     setStreamStatus("connecting");
-    const ws = new WebSocket("ws://localhost:8000/ws/predict");
+    const ws = new WebSocket(`${toWebSocketUrl(API_BASE)}/ws/predict`);
     wsRef.current = ws;
 
     ws.onopen = async () => {
