@@ -211,6 +211,7 @@ function drawSpectrogram(canvas, spec, meta) {
 export default function App() {
   const [file, setFile] = useState(null);
   const [inputMode, setInputMode] = useState(null);
+  const [audioUrl, setAudioUrl] = useState("");
   const [predictResult, setPredictResult] = useState(null);
   const [spectrogram, setSpectrogram] = useState(null);
   const [spectrogramMeta, setSpectrogramMeta] = useState(null);
@@ -374,6 +375,16 @@ export default function App() {
   }, [spectrogram, spectrogramMeta]);
 
   useEffect(() => {
+    if (!file) {
+      setAudioUrl("");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setAudioUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  useEffect(() => {
     if (predictionsRef.current) {
       predictionsRef.current.style.height = `${FIXED_PANEL_HEIGHT}px`;
     }
@@ -416,6 +427,9 @@ export default function App() {
                 accept="audio/*"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
               />
+              {audioUrl ? (
+                <audio className="audio-player" controls src={audioUrl} />
+              ) : null}
               <div className="input-footer">
                 <button className="back-button" onClick={() => setInputMode(null)}>
                   Back
@@ -523,6 +537,36 @@ export default function App() {
       </section>
 
       {error ? <div className="error">{error}</div> : null}
+
+      <footer className="footer">
+        <div className="footer-title">Built by Ahmed Alhakem</div>
+        <div className="footer-links">
+          <a
+            href="https://www.linkedin.com/"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="LinkedIn"
+          >
+            in
+          </a>
+          <a
+            href="https://github.com/"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="GitHub"
+          >
+            GH
+          </a>
+          <a
+            href="https://www.instagram.com/"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Instagram"
+          >
+            IG
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }
