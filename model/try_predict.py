@@ -12,7 +12,7 @@ AUDIO_PATHS = [
 ]
 
 for audio_path in AUDIO_PATHS:
-    data = predict(audio_path, sample_rate=22050, duration=4.0, n_mels=64)
+    data = predict(audio_path)
     top_k = data["top_k"]
     print("\nProcessing audio: " + audio_path)
     print("Spectogram's shape: " + str(data["spectrogram"]["shape"]))

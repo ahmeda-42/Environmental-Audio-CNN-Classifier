@@ -13,10 +13,10 @@ if MODEL_DIR not in sys.path:
     sys.path.insert(0, MODEL_DIR)
 
 from model.load_model import MODEL_PATH, load_model
-from config import DURATION, N_MELS, SAMPLE_RATE
+from config import DURATION, HOP_LENGTH, N_MELS, SAMPLE_RATE
 from model.dataset import load_label_mapping
 from preprocessing.audio_features import load_audio, compute_spectrogram
-from preprocessing.visualize_spectrogram import spectrogram_to_base64
+from preprocessing.visualize_spectrogram import build_spectrogram_metadata, spectrogram_to_base64
 
 
 def labels():
@@ -26,27 +26,51 @@ def labels():
     return label_to_index, index_to_label
 
 
-def compute_spectrogram_item(audio_path, sample_rate=SAMPLE_RATE, duration=DURATION, n_mels=N_MELS):
+def compute_spectrogram_item(
+    audio_path,
+    sample_rate=SAMPLE_RATE,
+    duration=DURATION,
+    hop_length=HOP_LENGTH,
+    n_mels=N_MELS,
+):
     # Load audio from audio path and compute spectrogram
     y, sr = load_audio(audio_path, sample_rate, duration)
-    features = compute_spectrogram(y, sr, n_mels=n_mels)
+    features = compute_spectrogram(y, sr, n_mels=n_mels, hop_length=hop_length)
+    metadata = build_spectrogram_metadata(
+        features,
+        sample_rate=sample_rate,
+        hop_length=hop_length,
+        n_mels=n_mels,
+    )
 
     # Convert spectrogram to PNG base64 image
     spectrogram_item = {
         "image": spectrogram_to_base64(features),
         "features": features.tolist(),
         "shape": list(features.shape),
+        **metadata,
     }
     return features, spectrogram_item
 
 
-def predict(audio_path, sample_rate=SAMPLE_RATE, duration=DURATION, n_mels=N_MELS, top_k=3):
+def predict(
+    audio_path,
+    sample_rate=SAMPLE_RATE,
+    duration=DURATION,
+    n_mels=N_MELS,
+    hop_length=HOP_LENGTH,
+    top_k=3,
+):
     # Load label mapping to translate indices -> class names
     label_to_index, index_to_label = labels()
 
     # Convert raw audio to a spectrogram tensor
     features, spectrogram_item = compute_spectrogram_item(
-        audio_path, sample_rate, duration, n_mels
+        audio_path,
+        sample_rate=sample_rate,
+        duration=duration,
+        hop_length=hop_length,
+        n_mels=n_mels,
     )
     x = torch.tensor(features).unsqueeze(0).unsqueeze(0)
 

@@ -70,9 +70,27 @@ button[disabled] {
 }
 
 .spectrogram {
-  width: 100%;
+  width: auto;
+  max-width: none;
+  height: auto;
+  display: block;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
+}
+
+.spectrogram-frame {
+  display: grid;
+  gap: 12px;
+}
+
+.spec-title {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.spec-canvas {
+  overflow-x: auto;
+  padding-bottom: 6px;
 }
 
 .error {

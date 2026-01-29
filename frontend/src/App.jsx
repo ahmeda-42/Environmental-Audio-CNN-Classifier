@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 
@@ -12,38 +12,199 @@ function formatPct(value) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-function drawSpectrogram(canvas, spec) {
-  if (!canvas || !spec || spec.length === 0) return;
-  const ctx = canvas.getContext("2d");
-  const height = spec.length;
-  const width = spec[0].length;
-  canvas.width = width;
-  canvas.height = height;
+function formatHz(value) {
+  if (!Number.isFinite(value)) return "";
+  if (value >= 1000) return `${(value / 1000).toFixed(1)} kHz`;
+  return `${Math.round(value)} Hz`;
+}
 
+function formatSeconds(value) {
+  if (!Number.isFinite(value)) return "";
+  return `${value.toFixed(1)} s`;
+}
+
+function melToHz(mel) {
+  return 700 * (10 ** (mel / 2595) - 1);
+}
+
+function hzToMel(hz) {
+  return 2595 * Math.log10(1 + hz / 700);
+}
+
+function computeTickValues(spec, meta) {
+  const specHeight = spec.length;
+  const specWidth = spec[0]?.length || 0;
+  const numTicks = 5;
+
+  const sampleRate = meta.sample_rate || 22050;
+  const hopLength = meta.hop_length || 512;
+  const nMels = meta.n_mels || specHeight;
+
+  const duration = specWidth > 1 ? ((specWidth - 1) * hopLength) / sampleRate : 0;
+  let timeTicks = meta.time_ticks || [];
+  if (timeTicks.length === 0) {
+    timeTicks = Array.from({ length: numTicks }, (_, i) => (i * duration) / (numTicks - 1 || 1));
+  }
+  const roundedDuration = Math.round(duration * 10) / 10;
+  if (timeTicks.length > 0) {
+    timeTicks = timeTicks.map((t) => Math.round(t * 10) / 10);
+    timeTicks[timeTicks.length - 1] = roundedDuration;
+  }
+
+  let freqTicks = meta.freq_ticks || [];
+  if (freqTicks.length === 0) {
+    const melMin = hzToMel(0);
+    const melMax = hzToMel(sampleRate / 2);
+    freqTicks = Array.from({ length: numTicks }, (_, i) =>
+      melToHz(melMin + (i * (melMax - melMin)) / (numTicks - 1 || 1))
+    );
+  }
+
+  let dbTicks = meta.db_ticks || [];
+  if (dbTicks.length === 0) {
+    const flat = spec.flat();
+    const min = Math.min(...flat);
+    const max = Math.max(...flat);
+    const mid = (min + max) / 2;
+    dbTicks = [max, mid, min];
+  }
+
+  return { timeTicks, freqTicks, dbTicks };
+}
+
+function drawSpectrogram(canvas, spec, meta) {
+  if (!canvas || !spec || spec.length === 0 || !meta) return;
+  const ctx = canvas.getContext("2d");
+  const specHeight = spec.length;
+  const specWidth = spec[0].length;
+  const ticks = computeTickValues(spec, meta);
+
+  const margin = { left: 90, right: 110, top: 30, bottom: 55 };
+  const imageWidth = 720;
+  const imageHeight = 320;
+  const colorbarWidth = 16;
+  const colorbarGap = 50;
+
+  canvas.width = margin.left + imageWidth + colorbarGap + colorbarWidth + margin.right;
+  canvas.height = margin.top + imageHeight + margin.bottom;
+  canvas.style.width = `${canvas.width}px`;
+  canvas.style.height = `${canvas.height}px`;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Build spectrogram bitmap (grayscale)
   const flat = spec.flat();
   const min = Math.min(...flat);
   const max = Math.max(...flat);
   const range = max - min || 1;
-
-  const imageData = ctx.createImageData(width, height);
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const value = (spec[y][x] - min) / range;
+  const offscreen = document.createElement("canvas");
+  offscreen.width = specWidth;
+  offscreen.height = specHeight;
+  const offCtx = offscreen.getContext("2d");
+  const imageData = offCtx.createImageData(specWidth, specHeight);
+  for (let y = 0; y < specHeight; y += 1) {
+    const srcY = specHeight - 1 - y;
+    for (let x = 0; x < specWidth; x += 1) {
+      const value = (spec[srcY][x] - min) / range;
       const intensity = Math.floor(value * 255);
-      const idx = (y * width + x) * 4;
+      const idx = (y * specWidth + x) * 4;
       imageData.data[idx + 0] = intensity;
       imageData.data[idx + 1] = intensity;
       imageData.data[idx + 2] = intensity;
       imageData.data[idx + 3] = 255;
     }
   }
-  ctx.putImageData(imageData, 0, 0);
+  offCtx.putImageData(imageData, 0, 0);
+  ctx.drawImage(offscreen, margin.left, margin.top, imageWidth, imageHeight);
+
+  // Axes
+  ctx.strokeStyle = "#0f172a";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(margin.left, margin.top);
+  ctx.lineTo(margin.left, margin.top + imageHeight);
+  ctx.lineTo(margin.left + imageWidth, margin.top + imageHeight);
+  ctx.stroke();
+
+  // Y ticks (frequency)
+  const yTicks = ticks.freqTicks || [];
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "14px Inter, sans-serif";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  yTicks.forEach((tick, i) => {
+    const y = margin.top + (imageHeight * i) / (yTicks.length - 1 || 1);
+    ctx.beginPath();
+    ctx.moveTo(margin.left - 6, y);
+    ctx.lineTo(margin.left, y);
+    ctx.stroke();
+    const label = formatHz(tick);
+    ctx.fillText(label, margin.left - 10, y);
+  });
+
+  // X ticks (time)
+  const xTicks = ticks.timeTicks || [];
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  xTicks.forEach((tick, i) => {
+    const x = margin.left + (imageWidth * i) / (xTicks.length - 1 || 1);
+    ctx.beginPath();
+    ctx.moveTo(x, margin.top + imageHeight);
+    ctx.lineTo(x, margin.top + imageHeight + 6);
+    ctx.stroke();
+    const label = formatSeconds(tick);
+    ctx.fillText(label, x, margin.top + imageHeight + 22);
+  });
+
+  // Axis labels
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "15px Inter, sans-serif";
+  ctx.save();
+  ctx.translate(20, margin.top + imageHeight / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText("Frequency", 0, 0);
+  ctx.restore();
+  ctx.fillText(
+    "Time",
+    margin.left + imageWidth / 2 - 24,
+    margin.top + imageHeight + 44
+  );
+
+  // Colorbar
+  const cbX = margin.left + imageWidth + colorbarGap;
+  const cbY = margin.top;
+  const cbHeight = imageHeight;
+  const gradient = ctx.createLinearGradient(0, cbY, 0, cbY + cbHeight);
+  gradient.addColorStop(0, "#ffffff");
+  gradient.addColorStop(1, "#111827");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(cbX, cbY, colorbarWidth, cbHeight);
+
+  const dbTicks = ticks.dbTicks || [];
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "14px Inter, sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  dbTicks.forEach((tick, i) => {
+    const y = cbY + (cbHeight * i) / (dbTicks.length - 1 || 1);
+    ctx.beginPath();
+    ctx.moveTo(cbX + colorbarWidth, y);
+    ctx.lineTo(cbX + colorbarWidth + 6, y);
+    ctx.stroke();
+    ctx.fillText(`${tick.toFixed(1)} dB`, cbX + colorbarWidth + 10, y);
+  });
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("Intensity", cbX - 6, cbY + cbHeight + 20);
 }
 
 export default function App() {
   const [file, setFile] = useState(null);
   const [predictResult, setPredictResult] = useState(null);
   const [spectrogram, setSpectrogram] = useState(null);
+  const [spectrogramMeta, setSpectrogramMeta] = useState(null);
   const [streaming, setStreaming] = useState(false);
   const [streamStatus, setStreamStatus] = useState("idle");
   const [streamPrediction, setStreamPrediction] = useState(null);
@@ -79,9 +240,7 @@ export default function App() {
       setPredictResult(data);
       if (data.spectrogram?.features) {
         setSpectrogram(data.spectrogram.features);
-        requestAnimationFrame(() =>
-          drawSpectrogram(canvasRef.current, data.spectrogram.features)
-        );
+        setSpectrogramMeta(data.spectrogram);
       }
     } catch (err) {
       setError(`Predict failed: ${err}`);
@@ -106,9 +265,7 @@ export default function App() {
       }
       const data = await response.json();
       setSpectrogram(data.features);
-      requestAnimationFrame(() =>
-        drawSpectrogram(canvasRef.current, data.features)
-      );
+      setSpectrogramMeta(data);
     } catch (err) {
       setError(`Spectrogram failed: ${err}`);
     }
@@ -196,6 +353,14 @@ export default function App() {
     setStreamStatus("idle");
   }
 
+  useEffect(() => {
+    if (spectrogram && spectrogramMeta) {
+      requestAnimationFrame(() =>
+        drawSpectrogram(canvasRef.current, spectrogram, spectrogramMeta)
+      );
+    }
+  }, [spectrogram, spectrogramMeta]);
+
   return (
     <div className="app">
       <header>
@@ -245,7 +410,12 @@ export default function App() {
       <section className="panel">
         <h2>Spectrogram</h2>
         {spectrogram ? (
-          <canvas ref={canvasRef} className="spectrogram" />
+          <div className="spectrogram-frame">
+            <div className="spec-title">Log-Mel Spectrogram</div>
+            <div className="spec-canvas">
+              <canvas ref={canvasRef} className="spectrogram" />
+            </div>
+          </div>
         ) : (
           <p>No spectrogram yet.</p>
         )}

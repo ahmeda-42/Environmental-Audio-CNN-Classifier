@@ -1,6 +1,5 @@
 import os
 import tempfile
-from functools import lru_cache
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from model.predict import (
@@ -54,7 +53,10 @@ def spectrogram_endpoint(params: SpectrogramRequest = Depends(), file: UploadFil
         tmp_path = tmp.name
     try:
         _, spectrogram_response = compute_spectrogram_item(
-            tmp_path, params.sample_rate, params.duration, params.n_mels
+            tmp_path,
+            sample_rate=params.sample_rate,
+            duration=params.duration,
+            n_mels=params.n_mels,
         )
     finally:
         os.remove(tmp_path)
@@ -70,7 +72,13 @@ def predict_audio(params: PredictRequest = Depends(), file: UploadFile = File(..
         tmp.write(file.file.read())
         tmp_path = tmp.name
     try:
-        predict_response = run_predict(tmp_path, params.sample_rate, params.duration, params.n_mels, params.top_k)
+        predict_response = run_predict(
+            tmp_path,
+            sample_rate=params.sample_rate,
+            duration=params.duration,
+            n_mels=params.n_mels,
+            top_k=params.top_k,
+        )
     finally:
         os.remove(tmp_path)
     return predict_response
