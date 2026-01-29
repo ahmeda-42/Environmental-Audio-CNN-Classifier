@@ -12,6 +12,14 @@ function formatPct(value) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+function formatLabel(label) {
+  if (!label) return "";
+  return label
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 function formatHz(value) {
   if (!Number.isFinite(value)) return "";
   if (value >= 1000) return `${(value / 1000).toFixed(1)} kHz`;
@@ -202,6 +210,7 @@ function drawSpectrogram(canvas, spec, meta) {
 
 export default function App() {
   const [file, setFile] = useState(null);
+  const [inputMode, setInputMode] = useState(null);
   const [predictResult, setPredictResult] = useState(null);
   const [spectrogram, setSpectrogram] = useState(null);
   const [spectrogramMeta, setSpectrogramMeta] = useState(null);
@@ -211,6 +220,9 @@ export default function App() {
   const [error, setError] = useState(null);
 
   const canvasRef = useRef(null);
+  const predictionsRef = useRef(null);
+  const FIXED_PANEL_HEIGHT = 265;
+  const [fixedPanelHeight] = useState(FIXED_PANEL_HEIGHT);
   const wsRef = useRef(null);
   const audioCtxRef = useRef(null);
   const processorRef = useRef(null);
@@ -228,7 +240,7 @@ export default function App() {
     form.append("file", file);
 
     try {
-      const response = await fetch(`${API_BASE}/predict?top_k=5`, {
+      const response = await fetch(`${API_BASE}/predict?top_k=4`, {
         method: "POST",
         body: form,
       });
@@ -361,84 +373,152 @@ export default function App() {
     }
   }, [spectrogram, spectrogramMeta]);
 
+  useEffect(() => {
+    if (predictionsRef.current) {
+      predictionsRef.current.style.height = `${FIXED_PANEL_HEIGHT}px`;
+    }
+  }, [FIXED_PANEL_HEIGHT]);
+
   return (
     <div className="app">
       <header>
-        <h1>Environmental Audio CNN</h1>
+        <h1>Environmental Audio CNN Classifier</h1>
         <p>Upload audio, see predictions, and view spectrograms.</p>
       </header>
 
-      <section className="panel">
-        <h2>Upload Audio</h2>
-        <input
-          type="file"
-          accept="audio/*"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-        />
-        <div className="actions">
-          <button onClick={handlePredict} disabled={!file}>
-            Predict
-          </button>
-          <button onClick={handleSpectrogram} disabled={!file}>
-            Spectrogram
-          </button>
-        </div>
-      </section>
-
-      <section className="panel">
-        <h2>Predictions</h2>
-        {predictResult ? (
-          <div>
-            <div className="primary">
-              <strong>{predictResult.top_prediction.label}</strong>{" "}
-              <span>{formatPct(predictResult.top_prediction.confidence)}</span>
-            </div>
-            <ul className="list">
-              {topK.map((item) => (
-                <li key={item.label}>
-                  <span>{item.label}</span>
-                  <span>{formatPct(item.confidence)}</span>
-                </li>
-              ))}
-            </ul>
+      <div className="panel-grid">
+        <section
+          className="panel audio-panel"
+          style={fixedPanelHeight ? { height: fixedPanelHeight } : undefined}
+        >
+          <div className="panel-header">
+            <h2>
+              {inputMode
+                ? inputMode === "upload"
+                  ? "Upload Audio"
+                  : "Realtime Mic"
+                : "Audio Input"}
+            </h2>
           </div>
-        ) : (
-          <p>No predictions yet.</p>
-        )}
-      </section>
+          {!inputMode ? (
+            <div className="mode-grid">
+              <button onClick={() => setInputMode("upload")}>
+                Upload Audio
+              </button>
+              <button onClick={() => setInputMode("mic")}>
+                Realtime Mic
+              </button>
+            </div>
+          ) : inputMode === "upload" ? (
+            <div className="input-body">
+              <input
+                type="file"
+                accept="audio/*"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+              <div className="input-footer">
+                <button className="back-button" onClick={() => setInputMode(null)}>
+                  Back
+                </button>
+                <div className="actions">
+                  <button onClick={handlePredict} disabled={!file}>
+                    Predict
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="input-body">
+              <p className="muted">Status: {streamStatus}</p>
+              {streamPrediction ? (
+                <div className="primary">
+                  <div className="prediction-row">
+                    <strong>{formatLabel(streamPrediction.label)}</strong>
+                    <span>{formatPct(streamPrediction.confidence)}</span>
+                  </div>
+                  <div className="confidence-bar">
+                    <div
+                      className="confidence-fill"
+                      style={{
+                        width: `${streamPrediction.confidence * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : null}
+              <div className="input-footer">
+                <button className="back-button" onClick={() => setInputMode(null)}>
+                  Back
+                </button>
+                <div className="actions">
+                  <button onClick={streaming ? stopStream : startStream}>
+                    {streaming ? "Stop Streaming" : "Start Streaming"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section
+          className="panel predictions-panel"
+          ref={predictionsRef}
+          style={fixedPanelHeight ? { height: fixedPanelHeight } : undefined}
+        >
+          <h2>Top Predictions</h2>
+          {predictResult ? (
+            <div>
+              <div className="primary">
+                <div className="prediction-row">
+                  <strong>{formatLabel(predictResult.top_prediction.label)}</strong>
+                  <span>{formatPct(predictResult.top_prediction.confidence)}</span>
+                </div>
+                <div className="confidence-bar">
+                  <div
+                    className="confidence-fill"
+                    style={{
+                      width: `${predictResult.top_prediction.confidence * 100}%`,
+                    }}
+                  />
+                </div>
+              </div>
+              <ul className="list">
+                {topK
+                  .filter(
+                    (item) => item.label !== predictResult.top_prediction.label
+                  )
+                  .map((item) => (
+                    <li key={item.label}>
+                      <div className="prediction-row">
+                        <span>{formatLabel(item.label)}</span>
+                        <span>{formatPct(item.confidence)}</span>
+                      </div>
+                      <div className="confidence-bar">
+                        <div
+                          className="confidence-fill"
+                          style={{ width: `${item.confidence * 100}%` }}
+                        />
+                      </div>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ) : (
+            <p>No predictions yet.</p>
+          )}
+        </section>
+      </div>
 
       <section className="panel">
-        <h2>Spectrogram</h2>
+        <h2>Log-Mel Spectrogram</h2>
         {spectrogram ? (
           <div className="spectrogram-frame">
-            <div className="spec-title">Log-Mel Spectrogram</div>
             <div className="spec-canvas">
               <canvas ref={canvasRef} className="spectrogram" />
             </div>
           </div>
         ) : (
           <p>No spectrogram yet.</p>
-        )}
-      </section>
-
-      <section className="panel">
-        <h2>Realtime Mic</h2>
-        <p>Status: {streamStatus}</p>
-        <div className="actions">
-          <button onClick={startStream} disabled={streaming}>
-            Start Streaming
-          </button>
-          <button onClick={stopStream} disabled={!streaming}>
-            Stop
-          </button>
-        </div>
-        {streamPrediction ? (
-          <div className="primary">
-            <strong>{streamPrediction.label}</strong>{" "}
-            <span>{formatPct(streamPrediction.confidence)}</span>
-          </div>
-        ) : (
-          <p>No live prediction yet.</p>
         )}
       </section>
 
