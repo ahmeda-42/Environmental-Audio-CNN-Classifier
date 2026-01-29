@@ -16,9 +16,11 @@ body {
 
 .app {
   max-width: 1100px;
-  margin: 28px auto;
-  padding: 0 24px 56px;
-  display: grid;
+  margin: 28px auto 0;
+  padding: 0 24px 20px;
+  min-height: calc(100vh - 56px);
+  display: flex;
+  flex-direction: column;
   gap: 18px;
 }
 
@@ -44,7 +46,7 @@ header p {
 .panel {
   background: #ffffff;
   border-radius: 16px;
-  padding: 22px;
+  padding: 18px;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
   border: 1px solid rgba(226, 232, 240, 0.9);
 }
@@ -74,6 +76,17 @@ header p {
   background: linear-gradient(135deg, #cbd5f5, #e2e8f0);
   color: #0f172a;
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.mode-icon {
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  filter: grayscale(100%) brightness(0.55);
 }
 
 .mode-grid button:hover:not([disabled]) {
@@ -85,12 +98,18 @@ header p {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .input-body {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
+  flex: 1;
+}
+
+.audio-panel .input-body {
+  margin-top: 16px;
 }
 
 .audio-player {
@@ -112,8 +131,9 @@ header p {
   display: grid;
   gap: 10px;
   justify-items: center;
-  padding: 18px 0 8px;
+  padding: 18px 0 0;
   color: #64748b;
+  margin-top: auto;
 }
 
 .footer-title {
@@ -142,6 +162,22 @@ header p {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+.footer-links a.icon-only {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.footer-links a.icon-only:hover {
+  box-shadow: none;
+}
+
+.footer-icon {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
 .footer-links a:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 16px rgba(15, 23, 42, 0.12);
@@ -152,6 +188,7 @@ header p {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  margin-top: auto;
 }
 
 .input-footer .actions {
@@ -171,8 +208,8 @@ header p {
 }
 
 .panel h2 {
-  margin: 0 0 8px;
-  font-size: 1.1rem;
+  margin: 0 0 6px;
+  font-size: 1rem;
   color: #0f172a;
 }
 
@@ -197,6 +234,11 @@ button {
   font-weight: 600;
   box-shadow: 0 12px 24px rgba(37, 99, 235, 0.25);
   transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
+}
+
+.action-button {
+  min-height: 44px;
+  padding: 12px 24px;
 }
 
 button:hover:not([disabled]) {
@@ -287,10 +329,6 @@ input[type="file"]::file-selector-button {
   font-size: 1.05rem;
   padding: 8px 10px;
   margin-bottom: 8px;
-}
-
-.predictions-panel {
-  padding: 18px;
 }
 
 .predictions-panel h2 {

@@ -414,9 +414,19 @@ export default function App() {
           {!inputMode ? (
             <div className="mode-grid">
               <button onClick={() => setInputMode("upload")}>
+                <img
+                  className="mode-icon"
+                  src="https://images.icon-icons.com/1875/PNG/512/fileupload_120150.png"
+                  alt="Upload"
+                />
                 Upload Audio
               </button>
               <button onClick={() => setInputMode("mic")}>
+                <img
+                  className="mode-icon"
+                  src="https://cdn-icons-png.flaticon.com/512/1082/1082810.png"
+                  alt="Mic"
+                />
                 Realtime Mic
               </button>
             </div>
@@ -431,11 +441,11 @@ export default function App() {
                 <audio className="audio-player" controls src={audioUrl} />
               ) : null}
               <div className="input-footer">
-                <button className="back-button" onClick={() => setInputMode(null)}>
+                <button className="back-button action-button" onClick={() => setInputMode(null)}>
                   Back
                 </button>
                 <div className="actions">
-                  <button onClick={handlePredict} disabled={!file}>
+                  <button className="action-button" onClick={handlePredict} disabled={!file}>
                     Predict
                   </button>
                 </div>
@@ -461,11 +471,11 @@ export default function App() {
                 </div>
               ) : null}
               <div className="input-footer">
-                <button className="back-button" onClick={() => setInputMode(null)}>
+                <button className="back-button action-button" onClick={() => setInputMode(null)}>
                   Back
                 </button>
                 <div className="actions">
-                  <button onClick={streaming ? stopStream : startStream}>
+                  <button className="action-button" onClick={streaming ? stopStream : startStream}>
                     {streaming ? "Stop Streaming" : "Start Streaming"}
                   </button>
                 </div>
@@ -546,24 +556,39 @@ export default function App() {
             target="_blank"
             rel="noreferrer"
             aria-label="LinkedIn"
+            className="icon-only"
           >
-            in
+            <img
+              className="footer-icon"
+              src="https://cdn.simpleicons.org/linkedin/64748b"
+              alt="LinkedIn"
+            />
           </a>
           <a
             href="https://github.com/"
             target="_blank"
             rel="noreferrer"
             aria-label="GitHub"
+            className="icon-only"
           >
-            GH
+            <img
+              className="footer-icon"
+              src="https://cdn.simpleicons.org/github/64748b"
+              alt="GitHub"
+            />
           </a>
           <a
             href="https://www.instagram.com/"
             target="_blank"
             rel="noreferrer"
             aria-label="Instagram"
+            className="icon-only"
           >
-            IG
+            <img
+              className="footer-icon"
+              src="https://cdn.simpleicons.org/instagram/64748b"
+              alt="Instagram"
+            />
           </a>
         </div>
       </footer>
