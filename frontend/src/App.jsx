@@ -224,8 +224,10 @@ export default function App() {
   const [streaming, setStreaming] = useState(false);
   const [streamStatus, setStreamStatus] = useState("idle");
   const [streamPrediction, setStreamPrediction] = useState(null);
+  const [lastPredictionSource, setLastPredictionSource] = useState("upload");
   const [streamDuration, setStreamDuration] = useState(4.0);
   const [streamNMels, setStreamNMels] = useState(64);
+  const [streamWarmup, setStreamWarmup] = useState(false);
   const [error, setError] = useState(null);
 
   const canvasRef = useRef(null);
@@ -236,14 +238,27 @@ export default function App() {
   const audioCtxRef = useRef(null);
   const processorRef = useRef(null);
   const micSourceRef = useRef(null);
+  const warmupTimeoutRef = useRef(null);
 
-  const activePrediction = streaming ? streamPrediction : predictResult;
+  const activePrediction = streamPrediction
+    ? streamPrediction
+    : streamWarmup && predictResult
+      ? predictResult
+      : lastPredictionSource === "stream"
+        ? streamPrediction
+        : predictResult;
   const topK = useMemo(() => {
     if (streamPrediction?.top_k) {
       return streamPrediction.top_k;
     }
-    return predictResult ? predictResult.top_k : [];
-  }, [predictResult, streamPrediction]);
+    if (streamWarmup && predictResult?.top_k) {
+      return predictResult.top_k;
+    }
+    if (lastPredictionSource === "stream") {
+      return streamPrediction?.top_k || [];
+    }
+    return predictResult?.top_k || [];
+  }, [predictResult, streamPrediction, streamWarmup, lastPredictionSource]);
 
   async function handlePredict() {
     if (!file) return;
@@ -263,6 +278,7 @@ export default function App() {
       }
       const data = await response.json();
       setPredictResult(data);
+      setLastPredictionSource("upload");
       setStreamPrediction(null);
       if (Array.isArray(data.spectrograms) && data.spectrograms.length > 0) {
         setSpectrograms(data.spectrograms);
@@ -310,7 +326,7 @@ export default function App() {
     if (streaming) return;
     setError(null);
     setStreamStatus("connecting");
-    setStreamPrediction(null);
+    setStreamWarmup(true);
     const ws = new WebSocket(`${toWebSocketUrl(API_BASE)}/ws/predict`);
     wsRef.current = ws;
 
@@ -348,6 +364,7 @@ export default function App() {
       } catch (err) {
         setError(`Mic error: ${err}`);
         setStreamStatus("error");
+        setStreamWarmup(false);
         ws.close();
       }
     };
@@ -360,6 +377,8 @@ export default function App() {
           return;
         }
         setStreamPrediction(data);
+        setLastPredictionSource("stream");
+        setStreamWarmup(false);
         if (Array.isArray(data.spectrograms) && data.spectrograms.length > 0) {
           setSpectrograms(data.spectrograms);
           setSpectrogramIndex(0);
@@ -378,11 +397,13 @@ export default function App() {
     ws.onerror = () => {
       setStreamStatus("error");
       setError("Stream connection failed.");
+      setStreamWarmup(false);
     };
 
     ws.onclose = () => {
       setStreamStatus("idle");
       setStreaming(false);
+      setStreamWarmup(false);
     };
   }
 
@@ -403,7 +424,7 @@ export default function App() {
       audioCtxRef.current.close();
       audioCtxRef.current = null;
     }
-    setStreamPrediction(null);
+    setStreamWarmup(false);
     setStreaming(false);
     setStreamStatus("idle");
   }
@@ -532,19 +553,38 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <div className="input-body">
-              <p className="muted">Status: {streamStatus}</p>
-              <div className="input-footer">
-                <button className="back-button action-button" onClick={() => setInputMode(null)}>
-                  Back
-                </button>
-                <div className="actions">
-                  <button className="action-button" onClick={streaming ? stopStream : startStream}>
-                    {streaming ? "Stop Streaming" : "Start Streaming"}
+            <>
+              <p className="muted status-text">
+                Status: {streamWarmup ? "loading" : streamStatus}
+              </p>
+              <div className="input-body input-body-centered">
+                <div className="status-icon-wrap">
+                  {streamWarmup ? (
+                    <div className="status-spinner" aria-label="Loading" />
+                  ) : (
+                    <img
+                      className={`status-icon${streaming ? "" : " status-icon-idle"}`}
+                      src={
+                        streaming
+                          ? "https://cdn-icons-png.flaticon.com/512/4029/4029010.png"
+                          : "https://icons.veryicon.com/png/o/healthcate-medical/health-fitness/sleep-10.png"
+                      }
+                      alt={streaming ? "Streaming" : "Idle"}
+                    />
+                  )}
+                </div>
+                <div className="input-footer">
+                  <button className="back-button action-button" onClick={() => setInputMode(null)}>
+                    Back
                   </button>
+                  <div className="actions">
+                    <button className="action-button" onClick={streaming ? stopStream : startStream}>
+                      {streaming ? "Stop Streaming" : "Start Streaming"}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </section>
 
@@ -603,7 +643,7 @@ export default function App() {
               </ul>
             </div>
           ) : (
-            <p>No predictions yet.</p>
+            <p className="muted empty-text">No predictions yet.</p>
           )}
         </section>
       </div>
@@ -645,7 +685,7 @@ export default function App() {
             </div>
           </div>
         ) : (
-          <p className="spectrogram-empty">No spectrogram yet.</p>
+          <p className="spectrogram-empty muted empty-text">No spectrogram yet.</p>
         )}
       </section>
 

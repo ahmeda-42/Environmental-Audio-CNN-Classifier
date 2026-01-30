@@ -2,6 +2,7 @@
   font-family: "Inter", system-ui, sans-serif;
   color: #0f172a;
   background: radial-gradient(circle at top, #eef2ff 0%, #f8fafc 45%, #ffffff 100%);
+  --panel-empty-gap: 4px;
 }
 
 * {
@@ -106,6 +107,28 @@ header p {
   flex-direction: column;
   gap: 12px;
   flex: 1;
+}
+
+.input-body-centered {
+  align-items: stretch;
+  position: relative;
+}
+
+.status-text {
+  margin-top: 0;
+  padding-top: var(--panel-empty-gap);
+}
+
+.empty-text {
+  margin-top: 0;
+  padding-top: var(--panel-empty-gap);
+}
+
+.status-icon-wrap {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  transform: translate(-50%, -50%);
 }
 
 .audio-panel .input-body {
@@ -338,6 +361,32 @@ button[disabled] {
   margin: 0;
 }
 
+.status-icon {
+  width: 160px;
+  height: 160px;
+  object-fit: contain;
+}
+
+.status-icon-idle {
+  width: 112px;
+  height: 112px;
+}
+
+.status-spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  border: 4px solid #e2e8f0;
+  border-top-color: #94a3b8;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .predictions-panel .primary {
   font-size: 1.05rem;
   padding: 8px 10px;
@@ -384,7 +433,8 @@ button[disabled] {
 }
 
 .spectrogram-empty {
-  margin-top: 20px;
+  margin-top: 0;
+  padding-top: var(--panel-empty-gap);
 }
 
 .spectrogram-controls {
