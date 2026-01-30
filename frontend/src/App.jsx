@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import linkedinIcon from "./assets/linkedin-112.svg";
+import githubIcon from "./assets/github-logo-6528.svg";
+import gmailIcon from "./assets/google-gmail-black-24179.svg";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 
@@ -432,11 +435,20 @@ export default function App() {
             </div>
           ) : inputMode === "upload" ? (
             <div className="input-body">
-              <input
-                type="file"
-                accept="audio/*"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-              />
+              <div className="file-row">
+                <label className="file-picker">
+                  Choose File
+                  <input
+                    className="file-input"
+                    type="file"
+                    accept="audio/*"
+                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  />
+                </label>
+                <span className="file-name">
+                  {file ? file.name : "No file chosen"}
+                </span>
+              </div>
               {audioUrl ? (
                 <audio className="audio-player" controls src={audioUrl} />
               ) : null}
@@ -552,7 +564,7 @@ export default function App() {
         <div className="footer-title">Built by Ahmed Alhakem</div>
         <div className="footer-links">
           <a
-            href="https://www.linkedin.com/"
+            href="https://www.linkedin.com/in/ahmedalhakem/"
             target="_blank"
             rel="noreferrer"
             aria-label="LinkedIn"
@@ -560,12 +572,25 @@ export default function App() {
           >
             <img
               className="footer-icon"
-              src="https://cdn.simpleicons.org/linkedin/64748b"
+              src={linkedinIcon}
               alt="LinkedIn"
             />
           </a>
           <a
-            href="https://github.com/"
+            href="mailto:ahmedalhakem42@gmail.com"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Email"
+            className="icon-only"
+          >
+            <img
+              className="footer-icon"
+              src={gmailIcon}
+              alt="Email"
+            />
+          </a>
+          <a
+            href="https://github.com/ahmeda-42"
             target="_blank"
             rel="noreferrer"
             aria-label="GitHub"
@@ -573,21 +598,8 @@ export default function App() {
           >
             <img
               className="footer-icon"
-              src="https://cdn.simpleicons.org/github/64748b"
+              src={githubIcon}
               alt="GitHub"
-            />
-          </a>
-          <a
-            href="https://www.instagram.com/"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Instagram"
-            className="icon-only"
-          >
-            <img
-              className="footer-icon"
-              src="https://cdn.simpleicons.org/instagram/64748b"
-              alt="Instagram"
             />
           </a>
         </div>
