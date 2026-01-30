@@ -35,6 +35,8 @@ async def handle_websocket_predict(websocket: WebSocket):
             message = await websocket.receive()
         except WebSocketDisconnect:
             break
+        if message.get("type") == "websocket.disconnect":
+            break
         if "bytes" in message:
             chunk = np.frombuffer(message["bytes"], dtype=np.float32)
             if chunk.size == 0:
