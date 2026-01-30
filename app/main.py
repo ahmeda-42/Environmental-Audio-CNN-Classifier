@@ -12,6 +12,7 @@ from app.websocket_handler import handle_websocket_predict
 from app.schemas import (
     HealthResponse,
     LabelsResponse,
+    ConfigResponse,
     PredictRequest,
     PredictResponse,
     Prediction,
@@ -41,6 +42,11 @@ def health():
 def labels_endpoint():
     _, index_to_label = get_labels()
     return {"labels": [index_to_label[i] for i in range(len(index_to_label))]}
+
+
+@app.get("/config", response_model=ConfigResponse)
+def config_endpoint():
+    return {"duration": DURATION, "n_mels": N_MELS}
 
 
 @app.post("/spectrogram", response_model=SpectrogramResponse)

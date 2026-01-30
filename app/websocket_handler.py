@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from fastapi import WebSocket
 from app.schemas import StreamConfig
 from model.load_model import MODEL_PATH, load_model
-from preprocessing.audio_features import compute_spectrogram
+from model.predict import compute_spectrogram_item
 from model.dataset import load_label_mapping
 
 async def handle_websocket_predict(websocket: WebSocket):
@@ -44,18 +44,37 @@ async def handle_websocket_predict(websocket: WebSocket):
 
             if buffer.size >= target_len:
                 window = buffer[-target_len:]
-                feat = compute_spectrogram(window, sample_rate, n_mels=n_mels)
+                feat, window_item = compute_spectrogram_item(
+                    sample_rate=sample_rate,
+                    duration=duration,
+                    n_mels=n_mels,
+                    y=window,
+                    sr=sample_rate,
+                )
+                window_item = {
+                    **window_item,
+                    "window_start": 0.0,
+                    "window_end": float(duration),
+                }
                 x = torch.tensor(feat).unsqueeze(0).unsqueeze(0)
 
                 with torch.no_grad():
                     logits = model(x.to(device))
                     probs = F.softmax(logits, dim=1).cpu().numpy()[0]
 
-                pred_idx = int(np.argmax(probs))
+                top_k = 4
+                top_k = max(1, min(top_k, len(probs)))
+                top_indices = np.argsort(probs)[-top_k:][::-1]
+                top_predictions = [
+                    {"label": index_to_label[i], "confidence": float(probs[i])}
+                    for i in top_indices
+                ]
                 await websocket.send_json(
                     {
-                        "label": index_to_label[pred_idx],
-                        "confidence": float(probs[pred_idx]),
+                        "top_prediction": top_predictions[0],
+                        "top_k": top_predictions,
+                        "spectrogram": window_item,
+                        "spectrograms": [window_item],
                     }
                 )
         elif "text" in message:

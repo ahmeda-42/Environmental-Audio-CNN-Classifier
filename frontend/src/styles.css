@@ -376,6 +376,25 @@ button[disabled] {
 .spectrogram-frame {
   display: grid;
   gap: 12px;
+  margin-top: 20px;
+}
+
+.spectrogram-frame .spec-canvas {
+  margin-top: 0;
+}
+
+.spectrogram-empty {
+  margin-top: 20px;
+}
+
+.spectrogram-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.spec-window {
+  color: #64748b;
+  font-size: 0.9rem;
 }
 
 .spec-title {

@@ -3,6 +3,7 @@ import sys
 import torch
 import torch.nn.functional as F
 import numpy as np
+import librosa
 
 # Make local modules importable when running from the repo root
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -13,7 +14,7 @@ if MODEL_DIR not in sys.path:
     sys.path.insert(0, MODEL_DIR)
 
 from model.load_model import MODEL_PATH, load_model
-from config import DURATION, HOP_LENGTH, N_MELS, SAMPLE_RATE
+from config import DURATION, HOP_LENGTH, N_MELS, RMS_NORMALIZE, RMS_TARGET, SAMPLE_RATE
 from model.dataset import load_label_mapping
 from preprocessing.audio_features import load_audio, compute_spectrogram
 from preprocessing.visualize_spectrogram import build_spectrogram_metadata, spectrogram_to_base64
@@ -26,15 +27,38 @@ def labels():
     return label_to_index, index_to_label
 
 
+def _rms_normalize(y):
+    if not RMS_NORMALIZE:
+        return y
+    rms = np.sqrt(np.mean(y**2)) if y.size else 0.0
+    if rms > 0:
+        return y * (RMS_TARGET / rms)
+    return y
+
+
+def _pad_to_length(y, target_len):
+    if len(y) < target_len:
+        return np.pad(y, (0, target_len - len(y)), mode="constant")
+    return y[:target_len]
+
+
 def compute_spectrogram_item(
-    audio_path,
+    audio_path=None,
     sample_rate=SAMPLE_RATE,
     duration=DURATION,
     hop_length=HOP_LENGTH,
     n_mels=N_MELS,
+    y=None,
+    sr=None,
 ):
-    # Load audio from audio path and compute spectrogram
-    y, sr = load_audio(audio_path, sample_rate, duration)
+    # Load or use provided audio and compute spectrogram
+    if y is None:
+        y, sr = load_audio(audio_path, sample_rate, duration)
+    else:
+        sr = sr or sample_rate
+        target_len = int(sample_rate * duration)
+        y = _pad_to_length(y, target_len)
+        y = _rms_normalize(y)
     features = compute_spectrogram(y, sr, n_mels=n_mels, hop_length=hop_length)
     metadata = build_spectrogram_metadata(
         features,
@@ -64,21 +88,59 @@ def predict(
     # Load label mapping to translate indices -> class names
     label_to_index, index_to_label = labels()
 
-    # Convert raw audio to a spectrogram tensor
-    features, spectrogram_item = compute_spectrogram_item(
-        audio_path,
-        sample_rate=sample_rate,
-        duration=duration,
-        hop_length=hop_length,
-        n_mels=n_mels,
-    )
-    x = torch.tensor(features).unsqueeze(0).unsqueeze(0)
+    # Load full audio for windowed prediction
+    y, sr = librosa.load(audio_path, sr=sample_rate, mono=True)
+    target_len = int(sample_rate * duration)
+    if y.size == 0:
+        y = np.zeros(target_len, dtype=np.float32)
 
-    # Load the model and run inference
+    # Split into fixed windows with 50% overlap, padding the last one
+    step = max(1, target_len // 2)
+    max_start = max(0, len(y) - target_len)
+    starts = list(range(0, max_start + 1, step))
+    windows = [
+        _pad_to_length(y[start : start + target_len], target_len)
+        for start in starts
+    ]
+    if not windows:
+        windows = [np.zeros(target_len, dtype=np.float32)]
+        starts = [0]
+
+    # Load the model once and run inference per window
     model, device = load_model(num_classes=len(label_to_index))
+    summed_probs = None
+    spectrogram_item = None
+    spectrograms = []
     with torch.no_grad():
-        logits = model(x.to(device))
-        probs = F.softmax(logits, dim=1).cpu().numpy()[0]
+        for idx, (start, window) in enumerate(zip(starts, windows)):
+            features, window_item = compute_spectrogram_item(
+                sample_rate=sample_rate,
+                duration=duration,
+                hop_length=hop_length,
+                n_mels=n_mels,
+                y=window,
+                sr=sr,
+            )
+            window_item = {
+                **window_item,
+                "window_start": float(start / sample_rate),
+                "window_end": float(
+                    min(start + target_len, len(y)) / sample_rate
+                ),
+            }
+            spectrograms.append(window_item)
+            if idx == 0:
+                spectrogram_item = window_item
+
+            x = torch.tensor(features).unsqueeze(0).unsqueeze(0)
+            logits = model(x.to(device))
+            probs = F.softmax(logits, dim=1).cpu().numpy()[0]
+            if summed_probs is None:
+                summed_probs = probs
+            else:
+                summed_probs += probs
+
+    probs = summed_probs / max(1, len(windows))
     
     # Get the top k predictions
     top_k = max(1, min(top_k, len(probs)))
@@ -92,4 +154,5 @@ def predict(
         "top_prediction": top_predictions[0],
         "top_k": top_predictions,
         "spectrogram": spectrogram_item,
+        "spectrograms": spectrograms,
     }

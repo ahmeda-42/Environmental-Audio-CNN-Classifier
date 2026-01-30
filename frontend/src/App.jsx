@@ -89,6 +89,7 @@ function drawSpectrogram(canvas, spec, meta) {
   const specHeight = spec.length;
   const specWidth = spec[0].length;
   const ticks = computeTickValues(spec, meta);
+  const timeOffset = meta.window_start || 0;
 
   const margin = { left: 90, right: 110, top: 30, bottom: 55 };
   const imageWidth = 720;
@@ -165,7 +166,7 @@ function drawSpectrogram(canvas, spec, meta) {
     ctx.moveTo(x, margin.top + imageHeight);
     ctx.lineTo(x, margin.top + imageHeight + 6);
     ctx.stroke();
-    const label = formatSeconds(tick);
+    const label = formatSeconds(tick + timeOffset);
     ctx.fillText(label, x, margin.top + imageHeight + 22);
   });
 
@@ -218,9 +219,13 @@ export default function App() {
   const [predictResult, setPredictResult] = useState(null);
   const [spectrogram, setSpectrogram] = useState(null);
   const [spectrogramMeta, setSpectrogramMeta] = useState(null);
+  const [spectrograms, setSpectrograms] = useState([]);
+  const [spectrogramIndex, setSpectrogramIndex] = useState(0);
   const [streaming, setStreaming] = useState(false);
   const [streamStatus, setStreamStatus] = useState("idle");
   const [streamPrediction, setStreamPrediction] = useState(null);
+  const [streamDuration, setStreamDuration] = useState(4.0);
+  const [streamNMels, setStreamNMels] = useState(64);
   const [error, setError] = useState(null);
 
   const canvasRef = useRef(null);
@@ -232,9 +237,13 @@ export default function App() {
   const processorRef = useRef(null);
   const micSourceRef = useRef(null);
 
-  const topK = useMemo(() => (predictResult ? predictResult.top_k : []), [
-    predictResult,
-  ]);
+  const activePrediction = streaming ? streamPrediction : predictResult;
+  const topK = useMemo(() => {
+    if (streamPrediction?.top_k) {
+      return streamPrediction.top_k;
+    }
+    return predictResult ? predictResult.top_k : [];
+  }, [predictResult, streamPrediction]);
 
   async function handlePredict() {
     if (!file) return;
@@ -254,9 +263,18 @@ export default function App() {
       }
       const data = await response.json();
       setPredictResult(data);
+      setStreamPrediction(null);
+      if (Array.isArray(data.spectrograms) && data.spectrograms.length > 0) {
+        setSpectrograms(data.spectrograms);
+        setSpectrogramIndex(0);
+        setSpectrogram(data.spectrograms[0].features);
+        setSpectrogramMeta(data.spectrograms[0]);
+        return;
+      }
       if (data.spectrogram?.features) {
         setSpectrogram(data.spectrogram.features);
         setSpectrogramMeta(data.spectrogram);
+        setSpectrograms([]);
       }
     } catch (err) {
       setError(`Predict failed: ${err}`);
@@ -282,47 +300,56 @@ export default function App() {
       const data = await response.json();
       setSpectrogram(data.features);
       setSpectrogramMeta(data);
+      setSpectrograms([]);
     } catch (err) {
       setError(`Spectrogram failed: ${err}`);
     }
   }
 
   async function startStream() {
+    if (streaming) return;
     setError(null);
     setStreamStatus("connecting");
+    setStreamPrediction(null);
     const ws = new WebSocket(`${toWebSocketUrl(API_BASE)}/ws/predict`);
     wsRef.current = ws;
 
     ws.onopen = async () => {
-      setStreamStatus("streaming");
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      audioCtxRef.current = audioCtx;
+      try {
+        setStreamStatus("streaming");
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioCtxRef.current = audioCtx;
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const source = audioCtx.createMediaStreamSource(stream);
-      micSourceRef.current = source;
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const source = audioCtx.createMediaStreamSource(stream);
+        micSourceRef.current = source;
 
-      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-      processorRef.current = processor;
+        const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+        processorRef.current = processor;
 
-      ws.send(
-        JSON.stringify({
-          sample_rate: audioCtx.sampleRate,
-          duration: 2.0,
-          n_mels: 64,
-        })
-      );
+        ws.send(
+          JSON.stringify({
+            sample_rate: audioCtx.sampleRate,
+            duration: streamDuration,
+            n_mels: streamNMels,
+          })
+        );
 
-      processor.onaudioprocess = (event) => {
-        const input = event.inputBuffer.getChannelData(0);
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(input.buffer);
-        }
-      };
+        processor.onaudioprocess = (event) => {
+          const input = event.inputBuffer.getChannelData(0);
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(input.buffer);
+          }
+        };
 
-      source.connect(processor);
-      processor.connect(audioCtx.destination);
-      setStreaming(true);
+        source.connect(processor);
+        processor.connect(audioCtx.destination);
+        setStreaming(true);
+      } catch (err) {
+        setError(`Mic error: ${err}`);
+        setStreamStatus("error");
+        ws.close();
+      }
     };
 
     ws.onmessage = (event) => {
@@ -333,6 +360,16 @@ export default function App() {
           return;
         }
         setStreamPrediction(data);
+        if (Array.isArray(data.spectrograms) && data.spectrograms.length > 0) {
+          setSpectrograms(data.spectrograms);
+          setSpectrogramIndex(0);
+          setSpectrogram(data.spectrograms[0].features);
+          setSpectrogramMeta(data.spectrograms[0]);
+        } else if (data.spectrogram?.features) {
+          setSpectrograms([]);
+          setSpectrogram(data.spectrogram.features);
+          setSpectrogramMeta(data.spectrogram);
+        }
       } catch (err) {
         setError(`Stream parse error: ${err}`);
       }
@@ -340,6 +377,7 @@ export default function App() {
 
     ws.onerror = () => {
       setStreamStatus("error");
+      setError("Stream connection failed.");
     };
 
     ws.onclose = () => {
@@ -365,6 +403,7 @@ export default function App() {
       audioCtxRef.current.close();
       audioCtxRef.current = null;
     }
+    setStreamPrediction(null);
     setStreaming(false);
     setStreamStatus("idle");
   }
@@ -386,6 +425,35 @@ export default function App() {
     setAudioUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [file]);
+
+  useEffect(() => {
+    if (spectrograms.length > 0) {
+      const current = spectrograms[spectrogramIndex];
+      if (current) {
+        setSpectrogram(current.features);
+        setSpectrogramMeta(current);
+      }
+    }
+  }, [spectrograms, spectrogramIndex]);
+
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        const response = await fetch(`${API_BASE}/config`);
+        if (!response.ok) return;
+        const data = await response.json();
+        if (typeof data.duration === "number") {
+          setStreamDuration(data.duration);
+        }
+        if (typeof data.n_mels === "number") {
+          setStreamNMels(data.n_mels);
+        }
+      } catch {
+        // Keep defaults if config fetch fails
+      }
+    }
+    loadConfig();
+  }, []);
 
   useEffect(() => {
     if (predictionsRef.current) {
@@ -466,22 +534,6 @@ export default function App() {
           ) : (
             <div className="input-body">
               <p className="muted">Status: {streamStatus}</p>
-              {streamPrediction ? (
-                <div className="primary">
-                  <div className="prediction-row">
-                    <strong>{formatLabel(streamPrediction.label)}</strong>
-                    <span>{formatPct(streamPrediction.confidence)}</span>
-                  </div>
-                  <div className="confidence-bar">
-                    <div
-                      className="confidence-fill"
-                      style={{
-                        width: `${streamPrediction.confidence * 100}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ) : null}
               <div className="input-footer">
                 <button className="back-button action-button" onClick={() => setInputMode(null)}>
                   Back
@@ -502,27 +554,38 @@ export default function App() {
           style={fixedPanelHeight ? { height: fixedPanelHeight } : undefined}
         >
           <h2>Top Predictions</h2>
-          {predictResult ? (
+          {activePrediction ? (
             <div>
               <div className="primary">
                 <div className="prediction-row">
-                  <strong>{formatLabel(predictResult.top_prediction.label)}</strong>
-                  <span>{formatPct(predictResult.top_prediction.confidence)}</span>
+                  <strong>{formatLabel(activePrediction.top_prediction?.label || activePrediction.label)}</strong>
+                  <span>
+                    {formatPct(
+                      activePrediction.top_prediction?.confidence ??
+                        activePrediction.confidence
+                    )}
+                  </span>
                 </div>
                 <div className="confidence-bar">
                   <div
                     className="confidence-fill"
                     style={{
-                      width: `${predictResult.top_prediction.confidence * 100}%`,
+                      width: `${
+                        (activePrediction.top_prediction?.confidence ??
+                          activePrediction.confidence) * 100
+                      }%`,
                     }}
                   />
                 </div>
               </div>
               <ul className="list">
                 {topK
-                  .filter(
-                    (item) => item.label !== predictResult.top_prediction.label
-                  )
+                  .filter((item) => {
+                    const topLabel =
+                      activePrediction.top_prediction?.label ||
+                      activePrediction.label;
+                    return item.label !== topLabel;
+                  })
                   .map((item) => (
                     <li key={item.label}>
                       <div className="prediction-row">
@@ -546,7 +609,35 @@ export default function App() {
       </div>
 
       <section className="panel">
-        <h2>Log-Mel Spectrogram</h2>
+        <div className="panel-header">
+          <h2>
+            {spectrograms.length > 1
+              ? "Log-Mel Spectrograms"
+              : "Log-Mel Spectrogram"}
+          </h2>
+          {spectrograms.length > 1 ? (
+            <div className="spectrogram-controls">
+              <button
+                className="back-button action-button"
+                onClick={() => setSpectrogramIndex((idx) => Math.max(0, idx - 1))}
+                disabled={spectrogramIndex === 0}
+              >
+                Prev
+              </button>
+              <button
+                className="back-button action-button"
+                onClick={() =>
+                  setSpectrogramIndex((idx) =>
+                    Math.min(spectrograms.length - 1, idx + 1)
+                  )
+                }
+                disabled={spectrogramIndex === spectrograms.length - 1}
+              >
+                Next
+              </button>
+            </div>
+          ) : null}
+        </div>
         {spectrogram ? (
           <div className="spectrogram-frame">
             <div className="spec-canvas">
@@ -554,7 +645,7 @@ export default function App() {
             </div>
           </div>
         ) : (
-          <p>No spectrogram yet.</p>
+          <p className="spectrogram-empty">No spectrogram yet.</p>
         )}
       </section>
 

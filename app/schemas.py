@@ -23,6 +23,10 @@ class HealthResponse(BaseModel):
 class LabelsResponse(BaseModel):
     labels: List[str]
 
+class ConfigResponse(BaseModel):
+    duration: float
+    n_mels: int
+
 class Prediction(BaseModel):
     label: str 
     confidence: float 
@@ -31,6 +35,7 @@ class PredictResponse(BaseModel):
     top_prediction: Prediction
     top_k: List[Prediction]
     spectrogram: "SpectrogramResponse"
+    spectrograms: List["SpectrogramWindowResponse"]
 
 class SpectrogramResponse(BaseModel):
     image: str
@@ -42,5 +47,9 @@ class SpectrogramResponse(BaseModel):
     sample_rate: int
     hop_length: int
     n_mels: int
+
+class SpectrogramWindowResponse(SpectrogramResponse):
+    window_start: float
+    window_end: float
 
 PredictResponse.model_rebuild()
