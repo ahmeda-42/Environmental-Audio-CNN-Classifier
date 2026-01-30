@@ -14,7 +14,15 @@ if ROOT_DIR not in sys.path:
 
 from model.dataset import AudioDataset, build_label_mapping, load_label_mapping
 from model.load_model import MODEL_PATH, load_model
-from config import BATCH_SIZE, CSV_PATH
+from config import (
+    BATCH_SIZE,
+    CSV_PATH,
+    DURATION,
+    HOP_LENGTH,
+    N_FFT,
+    N_MELS,
+    SAMPLE_RATE,
+)
 
 
 def ensure_fold_column(df):
@@ -67,7 +75,16 @@ def main():
     test_df = df[df["fold"] == 10]
 
     # Dataset handles audio loading + spectrogram extraction
-    test_ds = AudioDataset(test_df, label_to_index)
+    test_ds = AudioDataset(
+        test_df,
+        label_to_index,
+        sample_rate=SAMPLE_RATE,
+        duration=DURATION,
+        n_mels=N_MELS,
+        n_fft=N_FFT,
+        hop_length=HOP_LENGTH,
+        augment=False,
+    )
     test_loader = DataLoader(test_ds, batch_size=BATCH_SIZE, shuffle=False)
 
     # Load model weights for evaluation

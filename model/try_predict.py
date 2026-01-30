@@ -15,7 +15,7 @@ for audio_path in AUDIO_PATHS:
     data = predict(audio_path)
     top_k = data["top_k"]
     print("\nProcessing audio: " + audio_path)
-    print("Spectogram's shape: " + str(data["spectrogram"]["shape"]))
+    print("Spectrogram's shape: " + str(data["spectrogram"]["shape"]))
     print("Top predictions:")
     for prediction in top_k:
         print(f'• Prediction: {prediction["label"]} ({prediction["confidence"]*100:.1f}%)')

@@ -205,11 +205,11 @@ function drawSpectrogram(canvas, spec, meta) {
     ctx.moveTo(cbX + colorbarWidth, y);
     ctx.lineTo(cbX + colorbarWidth + 6, y);
     ctx.stroke();
-    ctx.fillText(`${tick.toFixed(1)} dB`, cbX + colorbarWidth + 10, y);
+    ctx.fillText(`${tick.toFixed(1)} z`, cbX + colorbarWidth + 10, y);
   });
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText("Intensity", cbX - 6, cbY + cbHeight + 20);
+  ctx.fillText("Intensity z-score", cbX - 6, cbY + cbHeight + 20);
 }
 
 export default function App() {

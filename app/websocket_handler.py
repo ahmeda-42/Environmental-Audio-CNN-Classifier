@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 from app.schemas import StreamConfig
 from model.load_model import MODEL_PATH, load_model
 from model.predict import compute_spectrogram_item
@@ -31,7 +31,10 @@ async def handle_websocket_predict(websocket: WebSocket):
 
     # Client sends raw float32 mono PCM in binary messages
     while True:
-        message = await websocket.receive()
+        try:
+            message = await websocket.receive()
+        except WebSocketDisconnect:
+            break
         if "bytes" in message:
             chunk = np.frombuffer(message["bytes"], dtype=np.float32)
             if chunk.size == 0:

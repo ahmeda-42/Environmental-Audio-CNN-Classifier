@@ -7,7 +7,7 @@ torch
 torchaudio
 tqdm
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart
 pillow
 matplotlib
