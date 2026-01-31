@@ -1,6 +1,6 @@
 # Environmental Audio CNN Classifier
 
-Full-stack ML project that detects and classifies environmental sounds using a CNN on log-mel spectrograms. Includes a FastAPI backend, a React frontend, real-time WebSocket streaming, and Docker support.
+A full-stack ML project that detects and classifies environmental sounds using deep learning. The system extracts log-mel spectrogram features from audio through signal processing and Fourier Transforms, runs a convolutional neural network (CNN) for inference, and provides a React-based web interface for file upload and real-time visualization. Includes a FastAPI backend, real-time WebSocket streaming, and Docker support.
 
 ## What This Project Does
 - Converts audio to log-mel spectrograms with optional RMS normalization.
@@ -10,32 +10,56 @@ Full-stack ML project that detects and classifies environmental sounds using a C
 - Ships a React UI for upload + microphone streaming with live spectrograms.
 
 ## Project Structure
-```
-app/                      # FastAPI app + WebSocket handler
-model/                    # CNN, training, evaluation, prediction
-preprocessing/            # Audio feature + spectrogram utilities
-frontend/                 # React UI (Vite)
-tests/                    # Pytest suite
-config.py                 # Centralized settings
-artifacts/                # Saved model + label mapping (not committed)
-data/                     # Dataset + CSV (not committed)
+```bash
+Environmental-Audio-CNN-Classifier/
+├── app/                         # FastAPI app + WebSocket handler
+│   ├── main.py                  # API entry point + routes
+│   ├── schemas.py               # Pydantic request/response models
+│   └── websocket_handler.py     # Real-time streaming logic
+├── model/                       # CNN, training, evaluation, prediction
+│   ├── cnn.py                   # AudioCNN architecture
+│   ├── dataset.py               # Dataset + SpecAugment
+│   ├── train.py                 # Training script
+│   ├── evaluate.py              # Evaluation script
+│   ├── predict.py               # Inference + windowing
+│   ├── load_model.py            # Model loading helper
+│   └── try_predict.py           # Example prediction script
+├── preprocessing/               # Audio features + utilities
+│   ├── audio_features.py        # Load audio + compute spectrogram
+│   ├── prepare_urbansound8k.py  # Build CSV from dataset
+│   └── visualize_spectrogram.py # Spectrogram encoding + metadata
+├── frontend/                    # React UI (Vite)
+│   ├── src/
+│   ├── Dockerfile
+│   └── nginx.conf
+├── tests/                       # Pytest suite
+│   ├── test_api.py
+│   ├── test_model.py
+│   ├── test_predict.py
+│   ├── test_preprocessing.py
+│   └── test_websocket.py
+├── artifacts/                   # Saved model + labels (not committed)
+├── data/                        # Dataset + CSV (not committed)
+├── config.py                    # Centralized settings
+├── Dockerfile                   # Backend container
+├── docker-compose.yml           # Run API + frontend
+├── requirements.txt
+└── README.md
 ```
 
-## Setup (Python)
+## Try It Yourself!!
+
+### 1. Prepare the dataset (UrbanSound8K)
+Download and extract UrbanSound8K to `data/` from https://urbansounddataset.weebly.com/download-urbansound8k.html
+
+### 2. Setup virtual environment
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Dataset (UrbanSound8K)
-1. Download and extract UrbanSound8K to `data/UrbanSound8K`.
-2. Generate the CSV (optional; `train.py` will auto-create if missing):
-```bash
-python -c "from preprocessing.prepare_urbansound8k import build_csv; build_csv('data/UrbanSound8K', 'data/urbansound8k.csv')"
-```
-
-## Train
+### 3. Train the model
 ```bash
 python model/train.py
 ```
@@ -43,19 +67,13 @@ Trains with folds 1–8, validates on fold 9, and saves:
 - `artifacts/cnn.pt`
 - `artifacts/cnn.pt.labels.json`
 
-## Evaluate
+### 4. Evaluate the model
 ```bash
 python model/evaluate.py
 ```
-Evaluates on fold 10 and prints accuracy + confusion matrix.
+Evaluates on fold 10 and prints the classification report and confusion matrix.
 
-## Predict (Python)
-```bash
-python model/try_predict.py
-```
-Edits to `model/try_predict.py` are the fastest way to test local files.
-
-## FastAPI Backend
+### 5. Run the FastAPI backend
 ```bash
 uvicorn app.main:app --reload
 ```
@@ -69,7 +87,7 @@ Endpoints:
 - `POST /spectrogram` (multipart file upload)
 - `WS /ws/predict` (float32 PCM streaming)
 
-## React Frontend
+### 6. Run the React frontend
 ```bash
 cd frontend
 npm install
@@ -86,9 +104,16 @@ docker compose up --build
 - API: `http://localhost:8000`
 
 ## Testing
+Run the full test suite:
 ```bash
 pytest
 ```
+Tests cover:
+- REST endpoints and responses
+- Model loading
+- Prediction windowing logic
+- Preprocessing + spectrogram metadata
+- WebSocket streaming
 
 ## Key Configuration
 Edit `config.py` to change:

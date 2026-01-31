@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -92,7 +92,6 @@ def main():
 
     # Overall accuracy and per-sample predictions
     acc, y_true, y_pred = evaluate(model, test_loader, device)
-    print(f"\ntest_acc = {acc:.3f}")
 
     # Confusion matrix and class-wise accuracy
     labels_sorted = [label for label, _ in sorted(label_to_index.items(), key=lambda x: x[1])]
@@ -105,12 +104,16 @@ def main():
         where=denom != 0,
     )
 
-    print("\nconfusion_matrix =")
-    print(cm)
-    print("\nclass_wise_accuracy =")
-    for label, value in zip(labels_sorted, per_class_acc):
-        print(f"{label}: {value:.3f}")
+    #print("\nclass_wise_accuracy =")
+    #for label, value in zip(labels_sorted, per_class_acc):
+    #    print(f"{label}: {value:.3f}")
+    #print(f"\ntest_acc = {acc:.3f}")
 
+    print("Classification Report:")
+    print(classification_report(y_true, y_pred, target_names=labels_sorted, digits=3))
+    print("\nConfusion Matrix:")
+    print(cm)
+    
 
 if __name__ == "__main__":
     main()
