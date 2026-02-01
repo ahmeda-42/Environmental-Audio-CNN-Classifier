@@ -25,8 +25,10 @@ from app.schemas import (
     StreamConfig,
 )
 
+logging.basicConfig(level=logging.INFO)
+
 app = FastAPI(title="Environmental Audio CNN Classifier API")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 # Allow the deployed frontend to call the API
 app.add_middleware(
@@ -89,7 +91,7 @@ def predict_audio(params: PredictRequest = Depends(), file: UploadFile = File(..
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
     start_time = time.perf_counter()
-    logger.info("Predict started for %s", file.filename)
+    logger.info("Predict request received for %s", file.filename)
     suffix = os.path.splitext(file.filename or "")[1]
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(file.file.read())
