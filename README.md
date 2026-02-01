@@ -2,8 +2,7 @@
 
 A full-stack ML project that detects and classifies environmental sounds using deep learning. The system extracts log-mel spectrogram features from audio through signal processing and Fourier Transforms, runs a 2D convolutional neural network (CNN) for inference (PyTorch), and provides a React-based web interface for file upload and real-time visualization. Includes a FastAPI backend, real-time WebSocket streaming, and Docker support.
 
-The model is trained on the UrbanSound8k dataset and is saved as `artifacts/cnn.pt`. UrbanSound8K contains 8,732 labeled 
-environmental audio clips across 10 classes. Clips are up to 4 seconds long and are split into 10 predefined folds, with labels stored in a CSV containing `file_path`, `label`, and `fold`. Training uses folds 1–8, validation uses fold 9, and testing/evaluation uses fold 10, so evaluation happens on a held-out fold rather than random splits.
+The model is trained on the UrbanSound8K dataset and is saved as `artifacts/cnn.pt`. UrbanSound8K contains 8,732 labeled environmental audio clips across 10 classes. Clips are up to 4 seconds long and are split into 10 predefined folds, with labels stored in a CSV containing `file_path`, `label`, and `fold`. Training uses folds 1–8, validation uses fold 9, and testing/evaluation uses fold 10, so evaluation happens on a held-out fold rather than random splits.
 
 ## Key Features
 
@@ -71,7 +70,7 @@ Environmental-Audio-CNN-Classifier/
 ## Try It Yourself!!
 
 ### 1. Prepare the dataset (UrbanSound8K)
-Download and extract UrbanSound8K to `data/` from https://urbansounddataset.weebly.com/download-urbansound8k.html
+Download and extract UrbanSound8K to `data/UrbanSound8K` from https://urbansounddataset.weebly.com/download-urbansound8k.html
 
 ### 2. Setup virtual environment
 ```bash
