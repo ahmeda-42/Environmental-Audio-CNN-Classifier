@@ -75,6 +75,11 @@ def spectrogram_endpoint(params: SpectrogramRequest = Depends(), file: UploadFil
         tmp.write(file.file.read())
         tmp_path = tmp.name
     try:
+        file_size = os.path.getsize(tmp_path)
+    except OSError:
+        file_size = -1
+    logger.info("Upload saved to %s (%d bytes).", tmp_path, file_size)
+    try:
         _, spectrogram_response = compute_spectrogram_item(
             tmp_path,
             sample_rate=params.sample_rate,

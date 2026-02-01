@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import librosa
 import soundfile as sf
@@ -11,7 +12,7 @@ from config import (
     SAMPLE_RATE,
 )
 
-# Load audio file as waveform and resample to target sample rate and duration
+# Call load_audio_full, pad/trim audio to target duration, and optionally normalize by RMS
 def load_audio(audio_path, target_sr=SAMPLE_RATE, duration=DURATION):
     y, sr = load_audio_full(audio_path, target_sr=target_sr)
     target_len = int(target_sr * duration)
@@ -26,9 +27,10 @@ def load_audio(audio_path, target_sr=SAMPLE_RATE, duration=DURATION):
             y = y * (RMS_TARGET / rms)
     return y, target_sr
 
-
 # Load full audio waveform and resample to target sample rate
 def load_audio_full(audio_path, target_sr=SAMPLE_RATE):
+    logger = logging.getLogger("uvicorn.error")
+    logger.info("Audio load start: %s", audio_path)
     try:
         y, sr = sf.read(audio_path, dtype="float32", always_2d=False)
         if y.ndim > 1:
@@ -36,10 +38,13 @@ def load_audio_full(audio_path, target_sr=SAMPLE_RATE):
         if sr != target_sr:
             y = librosa.resample(y, orig_sr=sr, target_sr=target_sr)
             sr = target_sr
+        logger.info("Audio load done via soundfile (samples=%d, sr=%d).", y.size, sr)
         return y, sr
     except Exception:
         # Fall back to librosa's loader if soundfile can't read the file
+        logger.info("Audio load fallback to librosa for %s", audio_path)
         y, sr = librosa.load(audio_path, sr=target_sr, mono=True)
+        logger.info("Audio load done via librosa (samples=%d, sr=%d).", y.size, sr)
         return y, sr
 
 # Compute log-mel spectrogram from waveform (manual STFT + mel filterbank)

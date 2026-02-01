@@ -5,7 +5,6 @@ import time
 import torch
 import torch.nn.functional as F
 import numpy as np
-import librosa
 
 # Make local modules importable when running from the repo root
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
