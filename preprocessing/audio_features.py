@@ -1,4 +1,6 @@
 import logging
+import os
+import wave
 import numpy as np
 import librosa
 import soundfile as sf
@@ -32,7 +34,11 @@ def load_audio_full(audio_path, target_sr=SAMPLE_RATE):
     logger = logging.getLogger("uvicorn.error")
     logger.info("Audio load start: %s", audio_path)
     try:
-        y, sr = sf.read(audio_path, dtype="float32", always_2d=False)
+        ext = os.path.splitext(audio_path)[1].lower()
+        if ext == ".wav":
+            y, sr = _read_wav_pcm(audio_path)
+        else:
+            y, sr = sf.read(audio_path, dtype="float32", always_2d=False)
         if y.ndim > 1:
             y = np.mean(y, axis=1)
         if sr != target_sr:
@@ -46,6 +52,39 @@ def load_audio_full(audio_path, target_sr=SAMPLE_RATE):
         y, sr = librosa.load(audio_path, sr=target_sr, mono=True)
         logger.info("Audio load done via librosa (samples=%d, sr=%d).", y.size, sr)
         return y, sr
+
+
+def _read_wav_pcm(path):
+    with wave.open(path, "rb") as wf:
+        num_channels = wf.getnchannels()
+        sample_width = wf.getsampwidth()
+        sr = wf.getframerate()
+        num_frames = wf.getnframes()
+        data = wf.readframes(num_frames)
+
+    if sample_width == 1:
+        y = np.frombuffer(data, dtype=np.uint8).astype(np.float32)
+        y = (y - 128.0) / 128.0
+    elif sample_width == 2:
+        y = np.frombuffer(data, dtype="<i2").astype(np.float32) / 32768.0
+    elif sample_width == 3:
+        raw = np.frombuffer(data, dtype=np.uint8)
+        raw = raw.reshape(-1, 3)
+        y = (
+            raw[:, 0].astype(np.int32)
+            | (raw[:, 1].astype(np.int32) << 8)
+            | (raw[:, 2].astype(np.int32) << 16)
+        )
+        y = (y.astype(np.float32) / 8388608.0)
+    elif sample_width == 4:
+        y = np.frombuffer(data, dtype="<i4").astype(np.float32) / 2147483648.0
+    else:
+        raise ValueError(f"Unsupported WAV sample width: {sample_width}")
+
+    if num_channels > 1:
+        y = y.reshape(-1, num_channels)
+        y = y.mean(axis=1)
+    return y, sr
 
 # Compute log-mel spectrogram from waveform (manual STFT + mel filterbank)
 def compute_spectrogram(y, sr=SAMPLE_RATE, n_mels=N_MELS, n_fft=N_FFT, hop_length=HOP_LENGTH):
