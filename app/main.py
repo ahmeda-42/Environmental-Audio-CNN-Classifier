@@ -23,10 +23,10 @@ from app.schemas import (
 
 app = FastAPI(title="Environmental Audio CNN Classifier API")
 
-# Allow local frontend dev servers to call the API
+# Allow the deployed frontend to call the API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://environmental-audio-cnn-classifier-ce92.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

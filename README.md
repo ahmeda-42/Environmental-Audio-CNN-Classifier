@@ -4,6 +4,10 @@ A full-stack ML project that detects and classifies environmental sounds using d
 
 The model is trained on the UrbanSound8K dataset and is saved as `artifacts/cnn.pt`. UrbanSound8K contains 8,732 labeled environmental audio clips across 10 classes. Clips are up to 4 seconds long and are split into 10 predefined folds, with labels stored in a CSV containing `file_path`, `label`, and `fold`. Training uses folds 1–8, validation uses fold 9, and testing/evaluation uses fold 10, so evaluation happens on a held-out fold rather than random splits.
 
+## Live Demo
+The full stack (frontend + backend) is deployed on Render. Try it here:
+https://environmental-audio-cnn-classifier-ce92.onrender.com
+
 ## Key Features
 
 Audio classification pipeline:
@@ -20,6 +24,9 @@ React frontend:
 - File upload + microphone streaming
 - Live spectrogram visualization with axes and colorbar
 - Displays top predictions and confidence probabilities
+
+Deployed:
+- Live Render full stack demo for quick access
 
 Pytest test suite:
 - API tests (REST + WebSocket)
@@ -78,6 +85,9 @@ Machine Learning / Audio Processing
 Backend
 - FastAPI
 - Pydantic
+
+Deployment
+- Render (frontend + backend hosting)
 - Uvicorn
 - WebSockets
 
