@@ -1,5 +1,6 @@
 import numpy as np
 import librosa
+import soundfile as sf
 from config import (
     DURATION,
     HOP_LENGTH,
@@ -12,7 +13,7 @@ from config import (
 
 # Load audio file as waveform and resample to target sample rate and duration
 def load_audio(audio_path, target_sr=SAMPLE_RATE, duration=DURATION):
-    y, sr = librosa.load(audio_path, sr=target_sr, mono=True)
+    y, sr = load_audio_full(audio_path, target_sr=target_sr)
     target_len = int(target_sr * duration)
     if len(y) < target_len:
         pad_width = target_len - len(y)
@@ -24,6 +25,22 @@ def load_audio(audio_path, target_sr=SAMPLE_RATE, duration=DURATION):
         if rms > 0:
             y = y * (RMS_TARGET / rms)
     return y, target_sr
+
+
+# Load full audio waveform and resample to target sample rate
+def load_audio_full(audio_path, target_sr=SAMPLE_RATE):
+    try:
+        y, sr = sf.read(audio_path, dtype="float32", always_2d=False)
+        if y.ndim > 1:
+            y = np.mean(y, axis=1)
+        if sr != target_sr:
+            y = librosa.resample(y, orig_sr=sr, target_sr=target_sr)
+            sr = target_sr
+        return y, sr
+    except Exception:
+        # Fall back to librosa's loader if soundfile can't read the file
+        y, sr = librosa.load(audio_path, sr=target_sr, mono=True)
+        return y, sr
 
 # Compute log-mel spectrogram from waveform (manual STFT + mel filterbank)
 def compute_spectrogram(y, sr=SAMPLE_RATE, n_mels=N_MELS, n_fft=N_FFT, hop_length=HOP_LENGTH):

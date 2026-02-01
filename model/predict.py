@@ -18,7 +18,7 @@ if MODEL_DIR not in sys.path:
 from model.load_model import MODEL_PATH, load_model
 from config import DURATION, HOP_LENGTH, N_MELS, RMS_NORMALIZE, RMS_TARGET, SAMPLE_RATE
 from model.dataset import load_label_mapping
-from preprocessing.audio_features import load_audio, compute_spectrogram
+from preprocessing.audio_features import load_audio, load_audio_full, compute_spectrogram
 from preprocessing.visualize_spectrogram import build_spectrogram_metadata, spectrogram_to_base64
 
 logger = logging.getLogger("uvicorn.error")
@@ -96,7 +96,7 @@ def predict(
     logger.info("Labels loaded (%d classes).", len(label_to_index))
 
     # Load full audio for windowed prediction
-    y, sr = librosa.load(audio_path, sr=sample_rate, mono=True)
+    y, sr = load_audio_full(audio_path, target_sr=sample_rate)
     logger.info("Audio loaded (samples=%d, sr=%d).", y.size, sr)
     target_len = int(sample_rate * duration)
     if y.size == 0:
