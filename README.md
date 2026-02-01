@@ -67,6 +67,68 @@ Environmental-Audio-CNN-Classifier/
 └── README.md
 ```
 
+## Tech Stack
+
+Machine Learning / Audio Processing
+- PyTorch (CNN training + inference)
+- Librosa + SoundFile (audio loading, log-mel spectrograms)
+- NumPy + Pandas (data handling)
+- scikit-learn (evaluation metrics)
+
+Backend
+- FastAPI
+- Pydantic
+- Uvicorn
+- WebSockets
+
+Frontend
+- React
+- Vite
+- CSS
+
+DevOps / Tooling
+- Docker
+- Nginx
+- Pytest
+- HTTPX
+
+## Metrics
+
+From the current evaluation run on the held-out test fold (fold 10):
+
+```text
+Classification Report:
+                  precision    recall  f1-score   support
+
+ air_conditioner      0.000     0.000     0.000       100
+        car_horn      0.127     0.424     0.196        33
+children_playing      0.600     0.030     0.057       100
+        dog_bark      0.968     0.300     0.458       100
+        drilling      0.582     0.460     0.514       100
+   engine_idling      0.000     0.000     0.000        93
+        gun_shot      0.575     0.719     0.639        32
+      jackhammer      0.263     0.312     0.286        96
+           siren      0.199     0.470     0.280        83
+    street_music      0.306     0.640     0.414       100
+
+        accuracy                          0.297       837
+       macro avg      0.362     0.336     0.284       837
+    weighted avg      0.370     0.297     0.265       837
+
+
+Confusion Matrix:
+[[ 0  8  0  0  9  0  0 30 42 11]
+ [ 0 14  0  0  6  0  4  0  0  9]
+ [ 0 26  3  0  1  0  0  2 29 39]
+ [ 0  7  1 30  3  0  8  6 15 30]
+ [ 0 22  0  0 46  0  4  5  0 23]
+ [ 0  1  0  0  1  0  0 27 64  0]
+ [ 0  0  0  1  0  0 23  8  0  0]
+ [ 0  0  1  0  6 53  0 30  3  3]
+ [ 0  7  0  0  0  0  1  6 39 30]
+ [ 0 25  0  0  7  0  0  0  4 64]]
+```
+
 ## Try It Yourself!!
 
 ### 1. Prepare the dataset (UrbanSound8K)

@@ -10,6 +10,5 @@ fastapi
 uvicorn[standard]
 python-multipart
 pillow
-matplotlib
 pytest
 httpx
