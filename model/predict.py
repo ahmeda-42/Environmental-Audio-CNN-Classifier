@@ -1,5 +1,7 @@
+import logging
 import os
 import sys
+import time
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -18,6 +20,8 @@ from config import DURATION, HOP_LENGTH, N_MELS, RMS_NORMALIZE, RMS_TARGET, SAMP
 from model.dataset import load_label_mapping
 from preprocessing.audio_features import load_audio, compute_spectrogram
 from preprocessing.visualize_spectrogram import build_spectrogram_metadata, spectrogram_to_base64
+
+logger = logging.getLogger("uvicorn.error")
 
 
 def labels():
@@ -85,11 +89,15 @@ def predict(
     hop_length=HOP_LENGTH,
     top_k=3,
 ):
+    start_time = time.perf_counter()
+    logger.info("Predict pipeline start: %s", audio_path)
     # Load label mapping to translate indices -> class names
     label_to_index, index_to_label = labels()
+    logger.info("Labels loaded (%d classes).", len(label_to_index))
 
     # Load full audio for windowed prediction
     y, sr = librosa.load(audio_path, sr=sample_rate, mono=True)
+    logger.info("Audio loaded (samples=%d, sr=%d).", y.size, sr)
     target_len = int(sample_rate * duration)
     if y.size == 0:
         y = np.zeros(target_len, dtype=np.float32)
@@ -105,9 +113,11 @@ def predict(
     if not windows:
         windows = [np.zeros(target_len, dtype=np.float32)]
         starts = [0]
+    logger.info("Windows prepared (count=%d).", len(windows))
 
     # Load the model once and run inference per window
     model, device = load_model(num_classes=len(label_to_index))
+    logger.info("Model loaded on %s.", device)
     summed_probs = None
     spectrogram_item = None
     spectrograms = []
@@ -141,7 +151,7 @@ def predict(
                 summed_probs += probs
 
     probs = summed_probs / max(1, len(windows))
-    
+
     # Get the top k predictions
     top_k = max(1, min(top_k, len(probs)))
     top_indices = np.argsort(probs)[-top_k:][::-1]
@@ -150,6 +160,7 @@ def predict(
         for i in top_indices
     ]
 
+    logger.info("Predict pipeline complete in %.2fs.", time.perf_counter() - start_time)
     return {
         "top_prediction": top_predictions[0],
         "top_k": top_predictions,
