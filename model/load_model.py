@@ -1,9 +1,11 @@
 import os
+from functools import lru_cache
 import torch
 from model.cnn import AudioCNN
 from config import MODEL_PATH
 
 
+@lru_cache(maxsize=1)
 def load_model(num_classes=10):
     # Build the model and load trained weights
     if not os.path.exists(MODEL_PATH):

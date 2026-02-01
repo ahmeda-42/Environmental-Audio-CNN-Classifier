@@ -1,4 +1,5 @@
 import json
+from functools import lru_cache
 import os
 import torch
 from torch.utils.data import Dataset
@@ -100,6 +101,7 @@ def save_label_mapping(path, label_to_index):
         json.dump(label_to_index, f, indent=2, sort_keys=True)
 
 
+@lru_cache(maxsize=4)
 def load_label_mapping(path):
     # Load label mapping for inference/evaluation
     with open(path, "r", encoding="utf-8") as f:
