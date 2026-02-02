@@ -233,8 +233,8 @@ export default function App() {
 
   const canvasRef = useRef(null);
   const predictionsRef = useRef(null);
-  const FIXED_PANEL_HEIGHT = 265;
-  const [fixedPanelHeight] = useState(FIXED_PANEL_HEIGHT);
+  const MIN_PANEL_HEIGHT = 265;
+  const [minPanelHeight] = useState(MIN_PANEL_HEIGHT);
   const wsRef = useRef(null);
   const audioCtxRef = useRef(null);
   const processorRef = useRef(null);
@@ -515,9 +515,9 @@ export default function App() {
 
   useEffect(() => {
     if (predictionsRef.current) {
-      predictionsRef.current.style.height = `${FIXED_PANEL_HEIGHT}px`;
+      predictionsRef.current.style.minHeight = `${MIN_PANEL_HEIGHT}px`;
     }
-  }, [FIXED_PANEL_HEIGHT]);
+  }, [MIN_PANEL_HEIGHT]);
 
   return (
     <div className="app">
@@ -529,7 +529,7 @@ export default function App() {
       <div className="panel-grid">
         <section
           className="panel audio-panel"
-          style={fixedPanelHeight ? { height: fixedPanelHeight } : undefined}
+          style={minPanelHeight ? { minHeight: minPanelHeight } : undefined}
         >
           <div className="panel-header">
             <h2>
@@ -634,7 +634,7 @@ export default function App() {
         <section
           className="panel predictions-panel"
           ref={predictionsRef}
-          style={fixedPanelHeight ? { height: fixedPanelHeight } : undefined}
+          style={minPanelHeight ? { minHeight: minPanelHeight } : undefined}
         >
           <h2>Top Predictions</h2>
           {predictLoading || streamWarmup ? (
@@ -690,12 +690,14 @@ export default function App() {
               </ul>
             </div>
           ) : (
-            <p className="muted empty-text">No predictions yet.</p>
+            <div className="panel-empty">
+              <p className="muted empty-text">No predictions yet.</p>
+            </div>
           )}
         </section>
       </div>
 
-      <section className="panel">
+      <section className="panel spectrogram-panel">
         <div className="panel-header">
           <h2>
             {spectrograms.length > 1
