@@ -330,7 +330,7 @@ export default function App() {
   }
 
   async function startStream() {
-    if (streaming) return;
+    if (streaming || streamWarmup) return;
     setError(null);
     setStreamStatus("connecting");
     setStreamWarmup(true);
@@ -620,7 +620,7 @@ export default function App() {
                     <button
                       className="action-button"
                       onClick={streaming ? stopStream : startStream}
-                      disabled={streaming ? streamWarmup : false}
+                      disabled={streamWarmup}
                     >
                       {streaming && !streamWarmup ? "Stop Streaming" : "Start Streaming"}
                     </button>
