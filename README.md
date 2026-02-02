@@ -15,7 +15,9 @@ Note: Render can be slow and may struggle with large uploads or long audio clips
 Audio classification pipeline:
 - Log-mel spectrogram feature extraction through signal processing and fourier transforms
 - Trains a 2D convolutional neural network (CNN) on spectrograms (PyTorch)
-- Optional SpecAugment and RMS normalization to improve accuracy
+- Class-balanced loss, learning-rate scheduling, and early stopping
+- Optional waveform augmentation (time-stretch, pitch-shift, noise, time shift)
+- Optional SpecAugment + RMS normalization to improve accuracy
 - 50% overlap windowing for long audio with averaged predictions
 
 FastAPI backend:
@@ -109,37 +111,39 @@ DevOps / Tooling
 From the current evaluation run on the held-out test fold (fold 10):
 
 ```text
-Classification Report:
+Classification Report:                                                                                              
                   precision    recall  f1-score   support
 
- air_conditioner      0.000     0.000     0.000       100
-        car_horn      0.127     0.424     0.196        33
-children_playing      0.600     0.030     0.057       100
-        dog_bark      0.968     0.300     0.458       100
-        drilling      0.582     0.460     0.514       100
-   engine_idling      0.000     0.000     0.000        93
-        gun_shot      0.575     0.719     0.639        32
-      jackhammer      0.263     0.312     0.286        96
-           siren      0.199     0.470     0.280        83
-    street_music      0.306     0.640     0.414       100
+ air_conditioner      0.656     0.800     0.721       100
+        car_horn      0.800     0.727     0.762        33
+children_playing      0.629     0.830     0.716       100
+        dog_bark      0.977     0.420     0.587       100
+        drilling      0.954     0.620     0.752       100
+   engine_idling      0.618     0.505     0.556        93
+        gun_shot      0.653     1.000     0.790        32
+      jackhammer      0.667     0.833     0.741        96
+           siren      0.692     0.892     0.779        83
+    street_music      0.839     0.780     0.808       100
 
-        accuracy                          0.297       837
-       macro avg      0.362     0.336     0.284       837
-    weighted avg      0.370     0.297     0.265       837
+        accuracy                          0.719       837
+       macro avg      0.748     0.741     0.721       837
+    weighted avg      0.755     0.719     0.712       837
 
 
 Confusion Matrix:
-[[ 0  8  0  0  9  0  0 30 42 11]
- [ 0 14  0  0  6  0  4  0  0  9]
- [ 0 26  3  0  1  0  0  2 29 39]
- [ 0  7  1 30  3  0  8  6 15 30]
- [ 0 22  0  0 46  0  4  5  0 23]
- [ 0  1  0  0  1  0  0 27 64  0]
- [ 0  0  0  1  0  0 23  8  0  0]
- [ 0  0  1  0  6 53  0 30  3  3]
- [ 0  7  0  0  0  0  1  6 39 30]
- [ 0 25  0  0  7  0  0  0  4 64]]
+[[80  0 14  0  0  0  0  4  2  0]
+ [ 1 24  0  0  0  1  0  4  0  3]
+ [ 6  1 83  0  1  3  0  0  2  4]
+ [ 4  0 18 42  1  4 11  5  7  8]
+ [ 9  0  3  1 62  3  5  7 10  0]
+ [17  0  2  0  0 47  0 20  7  0]
+ [ 0  0  0  0  0  0 32  0  0  0]
+ [ 4  0  0  0  0 12  0 80  0  0]
+ [ 0  0  2  0  0  6  1  0 74  0]
+ [ 1  5 10  0  1  0  0  0  5 78]]
 ```
+
+Note: You can evaluate it yourself by running `python model/evaluate.py` (look at the steps below)
 
 ## Try It Yourself!!
 
@@ -219,8 +223,11 @@ Edit `config.py` to change:
 - Audio: `SAMPLE_RATE`, `DURATION`, `N_MELS`, `N_FFT`, `HOP_LENGTH`
 - Streaming: `STREAM_DURATION`, `STREAM_N_MELS`
 - Normalization: `RMS_NORMALIZE`, `RMS_TARGET`
-- Training: `BATCH_SIZE`, `LEARNING_RATE`, `EPOCHS`, `SEED`
-- Augmentation: `SPEC_AUGMENT`, `TIME_MASK_PARAM`, `FREQ_MASK_PARAM`, `NUM_TIME_MASKS`, `NUM_FREQ_MASKS`
+- Training: `BATCH_SIZE`, `LEARNING_RATE`, `WEIGHT_DECAY`, `EPOCHS`, `SEED`
+- Scheduler/Early stop: `SCHEDULER_PATIENCE`, `SCHEDULER_FACTOR`, `EARLY_STOPPING_PATIENCE`
+- Class balance: `USE_CLASS_WEIGHTS`
+- SpecAugment: `SPEC_AUGMENT`, `SPEC_AUGMENT_STRENGTH`, `TIME_MASK_PARAM`, `FREQ_MASK_PARAM`, `NUM_TIME_MASKS`, `NUM_FREQ_MASKS`
+- Waveform aug: `AUG_TIME_STRETCH`, `TIME_STRETCH_RANGE`, `AUG_PITCH_SHIFT`, `PITCH_SHIFT_STEPS`, `AUG_NOISE`, `NOISE_STD`, `AUG_TIME_SHIFT`, `TIME_SHIFT_MAX_FRACTION`
 
 ## Environment Variables
 - `ALLOWED_ORIGINS` (comma-separated): override CORS allowlist
