@@ -1,5 +1,7 @@
 import base64
 import io
+import logging
+import time
 import numpy as np
 import librosa
 from PIL import Image
@@ -8,6 +10,8 @@ from config import HOP_LENGTH, N_MELS, SAMPLE_RATE
 
 
 def spectrogram_to_base64(spec):
+    logger = logging.getLogger("uvicorn.error")
+    start_time = time.perf_counter()
     # Normalize safely to [0, 1] and encode as grayscale PNG
     spec = spec.astype(np.float32)
     spec_min = float(np.min(spec))
@@ -20,7 +24,8 @@ def spectrogram_to_base64(spec):
     image = Image.fromarray(pixels, mode="L").convert("RGB")
 
     buffer = io.BytesIO()
-    image.save(buffer, format="PNG", optimize=True)
+    image.save(buffer, format="PNG", optimize=False, compress_level=1)
+    logger.info("Spectrogram PNG encoded in %.2fs.", time.perf_counter() - start_time)
     return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
 

@@ -1,4 +1,5 @@
 import logging
+import time
 import shutil
 import subprocess
 import numpy as np
@@ -76,16 +77,27 @@ def load_audio_full(audio_path, target_sr=SAMPLE_RATE):
 
 # Compute log-mel spectrogram from waveform (manual STFT + mel filterbank)
 def compute_spectrogram(y, sr=SAMPLE_RATE, n_mels=N_MELS, n_fft=N_FFT, hop_length=HOP_LENGTH):
+    logger = logging.getLogger("uvicorn.error")
+    step_start = time.perf_counter()
+
     # 1) Short Time Fourier Transform (STFT) -> magnitude^2 (power spectrogram)
+    logger.info("Spectrogram: STFT start.")
     D = librosa.stft(y, n_fft=n_fft, hop_length=hop_length)
+    logger.info("Spectrogram: STFT done in %.2fs.", time.perf_counter() - step_start)
+    step_start = time.perf_counter()
     power_spec = np.abs(D) ** 2
 
     # 2) Build mel filterbank and apply
+    logger.info("Spectrogram: mel filter start.")
     mel_filter = librosa.filters.mel(sr=sr, n_fft=n_fft, n_mels=n_mels)
     mel_spec = np.dot(mel_filter, power_spec)
+    logger.info("Spectrogram: mel filter done in %.2fs.", time.perf_counter() - step_start)
+    step_start = time.perf_counter()
 
     # 3) Convert to log scale (dB) and normalize
+    logger.info("Spectrogram: power_to_db start.")
     S_db = librosa.power_to_db(mel_spec, ref=np.max)
     std = S_db.std() or 1.0
     S_db_norm = (S_db - S_db.mean()) / std
+    logger.info("Spectrogram: power_to_db done in %.2fs.", time.perf_counter() - step_start)
     return S_db_norm
