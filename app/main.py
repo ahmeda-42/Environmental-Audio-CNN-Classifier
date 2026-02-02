@@ -2,6 +2,7 @@ import logging
 import os
 import tempfile
 import time
+import numpy as np
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from model.predict import (
@@ -11,6 +12,7 @@ from model.predict import (
 )
 from model.load_model import MODEL_PATH, load_model
 from model.dataset import load_label_mapping
+from preprocessing.audio_features import compute_spectrogram
 from config import DURATION, N_MELS, SAMPLE_RATE
 from app.websocket_handler import handle_websocket_predict
 from app.schemas import (
@@ -46,6 +48,10 @@ def warm_start():
         label_to_index = load_label_mapping(MODEL_PATH + ".labels.json")
         load_model(num_classes=len(label_to_index))
         logger.info("Model warmup complete.")
+        # Warm up spectrogram path to avoid first-request latency.
+        dummy = np.zeros(int(SAMPLE_RATE * DURATION), dtype=np.float32)
+        compute_spectrogram(dummy, sr=SAMPLE_RATE, n_mels=N_MELS)
+        logger.info("Spectrogram warmup complete.")
     except Exception as exc:
         logger.warning("Model warmup skipped: %s", exc)
 

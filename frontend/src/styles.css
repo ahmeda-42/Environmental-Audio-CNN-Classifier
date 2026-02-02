@@ -381,6 +381,13 @@ button[disabled] {
   animation: spin 0.9s linear infinite;
 }
 
+.panel-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

@@ -221,6 +221,7 @@ export default function App() {
   const [spectrogramMeta, setSpectrogramMeta] = useState(null);
   const [spectrograms, setSpectrograms] = useState([]);
   const [spectrogramIndex, setSpectrogramIndex] = useState(0);
+  const [predictLoading, setPredictLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [streamStatus, setStreamStatus] = useState("idle");
   const [streamPrediction, setStreamPrediction] = useState(null);
@@ -263,6 +264,7 @@ export default function App() {
   async function handlePredict() {
     if (!file) return;
     setError(null);
+    setPredictLoading(true);
 
     const form = new FormData();
     form.append("file", file);
@@ -294,6 +296,8 @@ export default function App() {
       }
     } catch (err) {
       setError(`Predict failed: ${err}`);
+    } finally {
+      setPredictLoading(false);
     }
   }
 
@@ -594,7 +598,11 @@ export default function App() {
           style={fixedPanelHeight ? { height: fixedPanelHeight } : undefined}
         >
           <h2>Top Predictions</h2>
-          {activePrediction ? (
+          {predictLoading ? (
+            <div className="panel-loading" aria-live="polite">
+              <div className="status-spinner" aria-label="Loading predictions" />
+            </div>
+          ) : activePrediction ? (
             <div>
               <div className="primary">
                 <div className="prediction-row">
@@ -678,7 +686,11 @@ export default function App() {
             </div>
           ) : null}
         </div>
-        {spectrogram ? (
+        {predictLoading ? (
+          <div className="panel-loading" aria-live="polite">
+            <div className="status-spinner" aria-label="Loading spectrogram" />
+          </div>
+        ) : spectrogram ? (
           <div className="spectrogram-frame">
             <div className="spec-canvas">
               <canvas ref={canvasRef} className="spectrogram" />

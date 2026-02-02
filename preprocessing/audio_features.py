@@ -2,6 +2,7 @@ import logging
 import time
 import shutil
 import subprocess
+from functools import lru_cache
 import numpy as np
 import librosa
 import soundfile as sf
@@ -89,7 +90,7 @@ def compute_spectrogram(y, sr=SAMPLE_RATE, n_mels=N_MELS, n_fft=N_FFT, hop_lengt
 
     # 2) Build mel filterbank and apply
     logger.info("Spectrogram: mel filter start.")
-    mel_filter = librosa.filters.mel(sr=sr, n_fft=n_fft, n_mels=n_mels)
+    mel_filter = _get_mel_filter(sr=sr, n_fft=n_fft, n_mels=n_mels)
     mel_spec = np.dot(mel_filter, power_spec)
     logger.info("Spectrogram: mel filter done in %.2fs.", time.perf_counter() - step_start)
     step_start = time.perf_counter()
@@ -101,6 +102,11 @@ def compute_spectrogram(y, sr=SAMPLE_RATE, n_mels=N_MELS, n_fft=N_FFT, hop_lengt
     S_db_norm = (S_db - S_db.mean()) / std
     logger.info("Spectrogram: power_to_db done in %.2fs.", time.perf_counter() - step_start)
     return S_db_norm
+
+
+@lru_cache(maxsize=8)
+def _get_mel_filter(sr, n_fft, n_mels):
+    return librosa.filters.mel(sr=sr, n_fft=n_fft, n_mels=n_mels)
 
 # Short Time Fourier Transform (STFT)
 def _stft(y, n_fft, hop_length):

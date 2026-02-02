@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -8,7 +9,9 @@ from model.predict import compute_spectrogram_item
 from model.dataset import load_label_mapping
 
 async def handle_websocket_predict(websocket: WebSocket):
+    logger = logging.getLogger("uvicorn.error")
     await websocket.accept()
+    logger.info("WebSocket connected.")
 
     # First message should be JSON config for the stream
     config_raw = await websocket.receive_text()
@@ -17,7 +20,9 @@ async def handle_websocket_predict(websocket: WebSocket):
         sample_rate = config.sample_rate
         duration = config.duration
         n_mels = config.n_mels
+        logger.info("WebSocket config: sr=%s duration=%s n_mels=%s", sample_rate, duration, n_mels)
     except Exception as exc:
+        logger.warning("WebSocket config invalid: %s", exc)
         await websocket.send_json({"error": f"invalid config: {exc}"})
         await websocket.close()
         return
@@ -34,6 +39,7 @@ async def handle_websocket_predict(websocket: WebSocket):
         try:
             message = await websocket.receive()
         except WebSocketDisconnect:
+            logger.info("WebSocket disconnected.")
             break
         if message.get("type") == "websocket.disconnect":
             break
