@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 class PredictRequest(BaseModel):
@@ -6,6 +6,7 @@ class PredictRequest(BaseModel):
     duration: float = Field(4.0, gt=0.0, le=30.0)
     n_mels: int = Field(128, ge=16, le=256)
     top_k: int = Field(3, ge=1, le=20)
+    reduce_payload: bool = False
 
 class SpectrogramRequest(BaseModel):
     sample_rate: int = Field(22050, ge=8000, le=48000)
@@ -34,8 +35,8 @@ class Prediction(BaseModel):
 class PredictResponse(BaseModel):
     top_prediction: Prediction
     top_k: List[Prediction]
-    spectrogram: "SpectrogramResponse"
-    spectrograms: List["SpectrogramWindowResponse"]
+    spectrogram: Optional["SpectrogramResponse"] = None
+    spectrograms: List["SpectrogramWindowResponse"] = []
 
 class SpectrogramResponse(BaseModel):
     image: str

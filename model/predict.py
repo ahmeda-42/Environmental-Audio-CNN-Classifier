@@ -55,6 +55,7 @@ def compute_spectrogram_item(
     y=None,
     sr=None,
     include_image=True,
+    include_features=True,
 ):
     # Load or use provided audio and compute spectrogram
     if y is None:
@@ -75,7 +76,7 @@ def compute_spectrogram_item(
     # Convert spectrogram to PNG base64 image
     spectrogram_item = {
         "image": spectrogram_to_base64(features) if include_image else "",
-        "features": features.tolist(),
+        "features": features.tolist() if include_features else [],
         "shape": list(features.shape),
         **metadata,
     }
@@ -89,6 +90,7 @@ def predict(
     n_mels=N_MELS,
     hop_length=HOP_LENGTH,
     top_k=3,
+    reduce_payload=False,
 ):
     start_time = time.perf_counter()
     logger.info("Predict pipeline start: %s", audio_path)
@@ -129,25 +131,37 @@ def predict(
         for idx, (start, window) in enumerate(zip(starts, windows)):
             window_start = time.perf_counter()
             logger.info("Window %d: spectrogram start.", idx)
-            features, window_item = compute_spectrogram_item(
-                sample_rate=sample_rate,
-                duration=duration,
-                hop_length=hop_length,
-                n_mels=n_mels,
-                y=window,
-                sr=sr,
-            )
+            if reduce_payload:
+                features = compute_spectrogram(
+                    _pad_to_length(window, target_len),
+                    sr,
+                    n_mels=n_mels,
+                    hop_length=hop_length,
+                )
+                window_item = None
+            else:
+                features, window_item = compute_spectrogram_item(
+                    sample_rate=sample_rate,
+                    duration=duration,
+                    hop_length=hop_length,
+                    n_mels=n_mels,
+                    y=window,
+                    sr=sr,
+                    include_image=True,
+                    include_features=True,
+                )
             logger.info("Window %d: spectrogram done in %.2fs.", idx, time.perf_counter() - window_start)
-            window_item = {
-                **window_item,
-                "window_start": float(start / sample_rate),
-                "window_end": float(
-                    min(start + target_len, len(y)) / sample_rate
-                ),
-            }
-            spectrograms.append(window_item)
-            if idx == 0:
-                spectrogram_item = window_item
+            if not reduce_payload and window_item is not None:
+                window_item = {
+                    **window_item,
+                    "window_start": float(start / sample_rate),
+                    "window_end": float(
+                        min(start + target_len, len(y)) / sample_rate
+                    ),
+                }
+                spectrograms.append(window_item)
+                if idx == 0:
+                    spectrogram_item = window_item
 
             infer_start = time.perf_counter()
             x = torch.tensor(features).unsqueeze(0).unsqueeze(0)
@@ -173,6 +187,6 @@ def predict(
     return {
         "top_prediction": top_predictions[0],
         "top_k": top_predictions,
-        "spectrogram": spectrogram_item,
-        "spectrograms": spectrograms,
+        "spectrogram": None if reduce_payload else spectrogram_item,
+        "spectrograms": [] if reduce_payload else spectrograms,
     }

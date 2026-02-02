@@ -118,6 +118,7 @@ def predict_audio(params: PredictRequest = Depends(), file: UploadFile = File(..
             duration=params.duration,
             n_mels=params.n_mels,
             top_k=params.top_k,
+            reduce_payload=params.reduce_payload,
         )
     finally:
         os.remove(tmp_path)
