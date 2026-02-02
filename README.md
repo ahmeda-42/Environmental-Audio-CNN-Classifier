@@ -6,9 +6,7 @@ The model is trained on the UrbanSound8K dataset and is saved as `artifacts/cnn.
 
 ## Live Demo
 
-The full stack (frontend + backend) is deployed on Render. 
-
-Try it here: https://environmental-audio-cnn-classifier-ce92.onrender.com
+The full stack is deployed on Render. Try it here: https://environmental-audio-cnn-classifier-ce92.onrender.com
 
 Note: Render can be slow and may struggle with large uploads or long audio clips. For a much faster, smoother experience (and to handle larger requests), run this project locally by following the steps in the "Try It Yourself!!" section.
 
