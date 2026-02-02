@@ -240,6 +240,7 @@ export default function App() {
   const processorRef = useRef(null);
   const micSourceRef = useRef(null);
   const warmupTimeoutRef = useRef(null);
+  const stopRequestedRef = useRef(false);
 
   const activePrediction = streamPrediction
     ? streamPrediction
@@ -331,10 +332,15 @@ export default function App() {
     setError(null);
     setStreamStatus("connecting");
     setStreamWarmup(true);
+    stopRequestedRef.current = false;
     const ws = new WebSocket(`${toWebSocketUrl(API_BASE)}/ws/predict`);
     wsRef.current = ws;
 
     ws.onopen = async () => {
+      if (stopRequestedRef.current) {
+        ws.close();
+        return;
+      }
       try {
         setStreamStatus("streaming");
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -408,10 +414,12 @@ export default function App() {
       setStreamStatus("idle");
       setStreaming(false);
       setStreamWarmup(false);
+      stopRequestedRef.current = false;
     };
   }
 
   function stopStream() {
+    stopRequestedRef.current = true;
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -564,13 +572,15 @@ export default function App() {
               <div className="input-body input-body-centered">
                 <div className="status-icon-wrap">
                   <img
-                    className={`status-icon${streaming ? "" : " status-icon-idle"}`}
+                    className={`status-icon${
+                      streaming && !streamWarmup ? "" : " status-icon-idle"
+                    }`}
                     src={
-                      streaming
+                      streaming && !streamWarmup
                         ? "https://cdn-icons-png.flaticon.com/512/4029/4029010.png"
                         : "https://icons.veryicon.com/png/o/healthcate-medical/health-fitness/sleep-10.png"
                     }
-                    alt={streaming ? "Streaming" : "Idle"}
+                    alt={streaming && !streamWarmup ? "Streaming" : "Idle"}
                   />
                 </div>
                 <div className="input-footer">
