@@ -559,23 +559,19 @@ export default function App() {
           ) : (
             <>
               <p className="muted status-text">
-                Status: {streamWarmup ? "loading" : streamStatus}
+                Status: {streamWarmup ? "idle" : streamStatus}
               </p>
               <div className="input-body input-body-centered">
                 <div className="status-icon-wrap">
-                  {streamWarmup ? (
-                    <div className="status-spinner" aria-label="Loading" />
-                  ) : (
-                    <img
-                      className={`status-icon${streaming ? "" : " status-icon-idle"}`}
-                      src={
-                        streaming
-                          ? "https://cdn-icons-png.flaticon.com/512/4029/4029010.png"
-                          : "https://icons.veryicon.com/png/o/healthcate-medical/health-fitness/sleep-10.png"
-                      }
-                      alt={streaming ? "Streaming" : "Idle"}
-                    />
-                  )}
+                  <img
+                    className={`status-icon${streaming ? "" : " status-icon-idle"}`}
+                    src={
+                      streaming
+                        ? "https://cdn-icons-png.flaticon.com/512/4029/4029010.png"
+                        : "https://icons.veryicon.com/png/o/healthcate-medical/health-fitness/sleep-10.png"
+                    }
+                    alt={streaming ? "Streaming" : "Idle"}
+                  />
                 </div>
                 <div className="input-footer">
                   <button className="back-button action-button" onClick={() => setInputMode(null)}>
@@ -598,7 +594,7 @@ export default function App() {
           style={fixedPanelHeight ? { height: fixedPanelHeight } : undefined}
         >
           <h2>Top Predictions</h2>
-          {predictLoading ? (
+          {predictLoading || streamWarmup ? (
             <div className="panel-loading" aria-live="polite">
               <div className="status-spinner" aria-label="Loading predictions" />
             </div>
@@ -686,7 +682,7 @@ export default function App() {
             </div>
           ) : null}
         </div>
-        {predictLoading ? (
+        {predictLoading || streamWarmup ? (
           <div className="panel-loading" aria-live="polite">
             <div className="status-spinner" aria-label="Loading spectrogram" />
           </div>
