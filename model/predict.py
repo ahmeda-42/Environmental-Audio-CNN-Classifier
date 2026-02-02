@@ -53,6 +53,7 @@ def compute_spectrogram_item(
     n_mels=N_MELS,
     y=None,
     sr=None,
+    include_image=True,
 ):
     # Load or use provided audio and compute spectrogram
     if y is None:
@@ -72,7 +73,7 @@ def compute_spectrogram_item(
 
     # Convert spectrogram to PNG base64 image
     spectrogram_item = {
-        "image": spectrogram_to_base64(features),
+        "image": spectrogram_to_base64(features) if include_image else "",
         "features": features.tolist(),
         "shape": list(features.shape),
         **metadata,

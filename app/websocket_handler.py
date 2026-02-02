@@ -61,6 +61,7 @@ async def handle_websocket_predict(websocket: WebSocket):
                     n_mels=n_mels,
                     y=window,
                     sr=sample_rate,
+                    include_image=False,
                 )
                 window_item = {
                     **window_item,
