@@ -82,10 +82,10 @@ def compute_spectrogram(y, sr=SAMPLE_RATE, n_mels=N_MELS, n_fft=N_FFT, hop_lengt
 
     # 1) Short Time Fourier Transform (STFT) -> magnitude^2 (power spectrogram)
     logger.info("Spectrogram: STFT start.")
-    D = librosa.stft(y, n_fft=n_fft, hop_length=hop_length)
+    fft = _stft(y, n_fft=n_fft, hop_length=hop_length)
+    power_spec = (np.abs(fft) ** 2).T
     logger.info("Spectrogram: STFT done in %.2fs.", time.perf_counter() - step_start)
     step_start = time.perf_counter()
-    power_spec = np.abs(D) ** 2
 
     # 2) Build mel filterbank and apply
     logger.info("Spectrogram: mel filter start.")
@@ -101,3 +101,28 @@ def compute_spectrogram(y, sr=SAMPLE_RATE, n_mels=N_MELS, n_fft=N_FFT, hop_lengt
     S_db_norm = (S_db - S_db.mean()) / std
     logger.info("Spectrogram: power_to_db done in %.2fs.", time.perf_counter() - step_start)
     return S_db_norm
+
+# Short Time Fourier Transform (STFT)
+def _stft(y, n_fft, hop_length):
+    y = np.ascontiguousarray(y, dtype=np.float32)
+    pad = n_fft // 2
+    if y.size == 0:
+        y = np.zeros(n_fft, dtype=np.float32)
+    y = np.pad(y, (pad, pad), mode="reflect")
+    if y.size < n_fft:
+        y = np.pad(y, (0, n_fft - y.size), mode="constant")
+
+    n_frames = 1 + (y.size - n_fft) // hop_length
+    if n_frames <= 0:
+        n_frames = 1
+    stride = y.strides[0]
+    frames = np.lib.stride_tricks.as_strided(
+        y,
+        shape=(n_frames, n_fft),
+        strides=(hop_length * stride, stride),
+        writeable=False,
+    )
+    window = np.hanning(n_fft).astype(np.float32)
+    frames = frames * window[None, :]
+    fft = np.fft.rfft(frames, n=n_fft, axis=1)
+    return fft
