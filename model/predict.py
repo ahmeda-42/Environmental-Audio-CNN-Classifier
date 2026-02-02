@@ -122,6 +122,8 @@ def predict(
     spectrograms = []
     with torch.no_grad():
         for idx, (start, window) in enumerate(zip(starts, windows)):
+            window_start = time.perf_counter()
+            logger.info("Window %d: spectrogram start.", idx)
             features, window_item = compute_spectrogram_item(
                 sample_rate=sample_rate,
                 duration=duration,
@@ -130,6 +132,7 @@ def predict(
                 y=window,
                 sr=sr,
             )
+            logger.info("Window %d: spectrogram done in %.2fs.", idx, time.perf_counter() - window_start)
             window_item = {
                 **window_item,
                 "window_start": float(start / sample_rate),
@@ -141,8 +144,10 @@ def predict(
             if idx == 0:
                 spectrogram_item = window_item
 
+            infer_start = time.perf_counter()
             x = torch.tensor(features).unsqueeze(0).unsqueeze(0)
             logits = model(x.to(device))
+            logger.info("Window %d: model forward done in %.2fs.", idx, time.perf_counter() - infer_start)
             probs = F.softmax(logits, dim=1).cpu().numpy()[0]
             if summed_probs is None:
                 summed_probs = probs
