@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 import sys
 import time
@@ -104,8 +105,11 @@ def predict(
 
     # Split into fixed windows with 50% overlap, padding the last one
     step = max(1, target_len // 2)
-    max_start = max(0, len(y) - target_len)
-    starts = list(range(0, max_start + 1, step))
+    if len(y) <= target_len:
+        starts = [0]
+    else:
+        num_extra = math.ceil((len(y) - target_len) / step)
+        starts = [i * step for i in range(num_extra + 1)]
     windows = [
         _pad_to_length(y[start : start + target_len], target_len)
         for start in starts
