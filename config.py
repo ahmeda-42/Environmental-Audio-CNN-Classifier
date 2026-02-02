@@ -9,6 +9,10 @@ N_MELS = 128
 N_FFT = 1024
 HOP_LENGTH = 512
 
+# Streaming defaults (match training window for accuracy)
+STREAM_DURATION = 4.0
+STREAM_N_MELS = N_MELS
+
 # SpecAugment defaults (optional)
 SPEC_AUGMENT = True
 TIME_MASK_PARAM = 20

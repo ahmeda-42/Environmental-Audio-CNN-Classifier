@@ -5,8 +5,14 @@ A full-stack ML project that detects and classifies environmental sounds using d
 The model is trained on the UrbanSound8K dataset and is saved as `artifacts/cnn.pt`. UrbanSound8K contains 8,732 labeled environmental audio clips across 10 classes. Clips are up to 4 seconds long and are split into 10 predefined folds, with labels stored in a CSV containing `file_path`, `label`, and `fold`. Training uses folds 1–8, validation uses fold 9, and testing/evaluation uses fold 10, so evaluation happens on a held-out fold rather than random splits.
 
 ## Live Demo
-The full stack (frontend + backend) is deployed on Render. Try it here:
+
+The full stack (frontend + backend) is deployed on Render. 
+
+Try it here: 
+
 https://environmental-audio-cnn-classifier-ce92.onrender.com
+
+Note: Render can be slow and may struggle with large uploads or long audio clips. For a much faster, smoother experience (and to handle larger requests), run this project locally by following the steps in the "Try It Yourself!!" section.
 
 ## Key Features
 
@@ -215,6 +221,16 @@ Tests cover:
 ## Key Configuration
 Edit `config.py` to change:
 - Audio: `SAMPLE_RATE`, `DURATION`, `N_MELS`, `N_FFT`, `HOP_LENGTH`
+- Streaming: `STREAM_DURATION`, `STREAM_N_MELS`
 - Normalization: `RMS_NORMALIZE`, `RMS_TARGET`
 - Training: `BATCH_SIZE`, `LEARNING_RATE`, `EPOCHS`, `SEED`
 - Augmentation: `SPEC_AUGMENT`, `TIME_MASK_PARAM`, `FREQ_MASK_PARAM`, `NUM_TIME_MASKS`, `NUM_FREQ_MASKS`
+
+## Environment Variables
+- `ALLOWED_ORIGINS` (comma-separated): override CORS allowlist
+- `MAX_UPLOAD_MB`: max upload size (default: 50)
+- `AUDIO_LOADER`: `ffmpeg` (default), `soundfile`, or `librosa`
+- `FFMPEG_TIMEOUT_SECONDS`: ffmpeg decode timeout (default: 20)
+
+## Predict API Options
+- `reduce_payload=true` skips spectrogram payload to speed up long requests

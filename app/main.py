@@ -3,6 +3,7 @@ import os
 import tempfile
 import time
 import numpy as np
+from typing import List
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from model.predict import (
@@ -13,7 +14,7 @@ from model.predict import (
 from model.load_model import MODEL_PATH, load_model
 from model.dataset import load_label_mapping
 from preprocessing.audio_features import compute_spectrogram
-from config import DURATION, N_MELS, SAMPLE_RATE
+from config import DURATION, N_MELS, SAMPLE_RATE, STREAM_DURATION, STREAM_N_MELS
 from app.websocket_handler import handle_websocket_predict
 from app.schemas import (
     HealthResponse,
@@ -32,14 +33,36 @@ logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="Environmental Audio CNN Classifier API")
 logger = logging.getLogger("uvicorn.error")
 
-# Allow the deployed frontend and local dev servers to call the API
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+def _get_allowed_origins() -> List[str]:
+    raw = os.getenv("ALLOWED_ORIGINS", "").strip()
+    if raw:
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
+    return [
         "https://environmental-audio-cnn-classifier-ce92.onrender.com",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-    ],
+    ]
+
+
+def _validate_upload(file: UploadFile, tmp_path: str) -> None:
+    allowed_types = ("audio/",)
+    if not file.content_type or not file.content_type.startswith(allowed_types):
+        raise HTTPException(status_code=400, detail="Unsupported file type.")
+    max_mb = float(os.getenv("MAX_UPLOAD_MB", "50"))
+    max_bytes = int(max_mb * 1024 * 1024)
+    try:
+        file_size = os.path.getsize(tmp_path)
+    except OSError:
+        file_size = -1
+    logger.info("Upload saved to %s (%d bytes).", tmp_path, file_size)
+    if file_size > max_bytes:
+        raise HTTPException(status_code=413, detail="File too large.")
+
+
+# Allow the deployed frontend and local dev servers to call the API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,6 +85,8 @@ def warm_start():
 
 @app.get("/health", response_model=HealthResponse)
 def health():
+    if not os.path.exists(MODEL_PATH) or not os.path.exists(MODEL_PATH + ".labels.json"):
+        raise HTTPException(status_code=503, detail="Model artifacts missing.")
     return {"status": "ok"}
 
 
@@ -73,7 +98,12 @@ def labels_endpoint():
 
 @app.get("/config", response_model=ConfigResponse)
 def config_endpoint():
-    return {"duration": DURATION, "n_mels": N_MELS}
+    return {
+        "duration": DURATION,
+        "n_mels": N_MELS,
+        "stream_duration": STREAM_DURATION,
+        "stream_n_mels": STREAM_N_MELS,
+    }
 
 
 @app.post("/spectrogram", response_model=SpectrogramResponse)
@@ -85,11 +115,7 @@ def spectrogram_endpoint(params: SpectrogramRequest = Depends(), file: UploadFil
         tmp.write(file.file.read())
         tmp_path = tmp.name
     try:
-        file_size = os.path.getsize(tmp_path)
-    except OSError:
-        file_size = -1
-    logger.info("Upload saved to %s (%d bytes).", tmp_path, file_size)
-    try:
+        _validate_upload(file, tmp_path)
         _, spectrogram_response = compute_spectrogram_item(
             tmp_path,
             sample_rate=params.sample_rate,
@@ -112,6 +138,7 @@ def predict_audio(params: PredictRequest = Depends(), file: UploadFile = File(..
         tmp.write(file.file.read())
         tmp_path = tmp.name
     try:
+        _validate_upload(file, tmp_path)
         predict_response = run_predict(
             tmp_path,
             sample_rate=params.sample_rate,

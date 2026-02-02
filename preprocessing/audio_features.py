@@ -67,12 +67,13 @@ def load_audio_full(audio_path, target_sr=SAMPLE_RATE):
                 str(target_sr),
                 "pipe:1",
             ]
+            timeout_seconds = float(os.getenv("FFMPEG_TIMEOUT_SECONDS", "20"))
             result = subprocess.run(
                 cmd,
                 check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                timeout=20,
+                timeout=timeout_seconds,
             )
             y = np.frombuffer(result.stdout, dtype=np.float32)
             logger.info("Audio load done via ffmpeg (samples=%d, sr=%d).", y.size, target_sr)

@@ -27,6 +27,8 @@ class LabelsResponse(BaseModel):
 class ConfigResponse(BaseModel):
     duration: float
     n_mels: int
+    stream_duration: float | None = None
+    stream_n_mels: int | None = None
 
 class Prediction(BaseModel):
     label: str 
