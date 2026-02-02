@@ -1,6 +1,6 @@
 # Environmental Audio CNN Classifier
 
-A full-stack ML project that detects and classifies environmental sounds using deep learning. The system extracts log-mel spectrogram features from audio through signal processing and Fourier Transforms, runs a 2D convolutional neural network (CNN) for inference (PyTorch), and provides a React-based web interface for file upload and real-time visualization. Includes a FastAPI backend, real-time WebSocket streaming, and Docker support.
+A full-stack ML project that detects and classifies environmental sounds using deep learning. The system extracts log-mel spectrogram features from audio through signal processing and fourier transforms, runs a 2D convolutional neural network (CNN) for inference (PyTorch), and provides a React-based web interface for file upload and real-time visualization. Includes a FastAPI backend, real-time WebSocket streaming, and Docker support.
 
 The model is trained on the UrbanSound8K dataset and is saved as `artifacts/cnn.pt`. UrbanSound8K contains 8,732 labeled environmental audio clips across 10 classes. Clips are up to 4 seconds long and are split into 10 predefined folds, with labels stored in a CSV containing `file_path`, `label`, and `fold`. Training uses folds 1–8, validation uses fold 9, and testing/evaluation uses fold 10, so evaluation happens on a held-out fold rather than random splits.
 
@@ -11,7 +11,7 @@ https://environmental-audio-cnn-classifier-ce92.onrender.com
 ## Key Features
 
 Audio classification pipeline:
-- Log-mel spectrogram feature extraction through signal processing and Fourier Transforms
+- Log-mel spectrogram feature extraction through signal processing and fourier transforms
 - Trains a 2D convolutional neural network (CNN) on spectrograms (PyTorch)
 - Optional SpecAugment and RMS normalization to improve accuracy
 - 50% overlap windowing for long audio with averaged predictions
@@ -79,7 +79,7 @@ Environmental-Audio-CNN-Classifier/
 Machine Learning / Audio Processing
 - PyTorch (CNN training + inference)
 - Librosa + SoundFile (audio loading, log-mel spectrograms)
-- NumPy + Pandas (data handling)
+- NumPy + Pandas (data handling, fourier transforms)
 - scikit-learn (evaluation metrics)
 
 Backend
