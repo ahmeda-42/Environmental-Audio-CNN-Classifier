@@ -241,6 +241,8 @@ export default function App() {
   const micSourceRef = useRef(null);
   const warmupTimeoutRef = useRef(null);
   const stopRequestedRef = useRef(false);
+  const streamActiveRef = useRef(false);
+  const streamSessionRef = useRef(0);
 
   const activePrediction = streamPrediction
     ? streamPrediction
@@ -333,11 +335,18 @@ export default function App() {
     setStreamStatus("connecting");
     setStreamWarmup(true);
     stopRequestedRef.current = false;
+    streamActiveRef.current = true;
+    streamSessionRef.current += 1;
+    const sessionId = streamSessionRef.current;
     const ws = new WebSocket(`${toWebSocketUrl(API_BASE)}/ws/predict`);
     wsRef.current = ws;
 
     ws.onopen = async () => {
-      if (stopRequestedRef.current) {
+      if (
+        stopRequestedRef.current ||
+        !streamActiveRef.current ||
+        sessionId !== streamSessionRef.current
+      ) {
         ws.close();
         return;
       }
@@ -380,6 +389,13 @@ export default function App() {
     };
 
     ws.onmessage = (event) => {
+      if (
+        stopRequestedRef.current ||
+        !streamActiveRef.current ||
+        sessionId !== streamSessionRef.current
+      ) {
+        return;
+      }
       try {
         const data = JSON.parse(event.data);
         if (data.error) {
@@ -405,21 +421,30 @@ export default function App() {
     };
 
     ws.onerror = () => {
+      if (!streamActiveRef.current || sessionId !== streamSessionRef.current) {
+        return;
+      }
       setStreamStatus("error");
       setError("Stream connection failed.");
       setStreamWarmup(false);
     };
 
     ws.onclose = () => {
+      if (sessionId !== streamSessionRef.current) {
+        return;
+      }
       setStreamStatus("idle");
       setStreaming(false);
       setStreamWarmup(false);
       stopRequestedRef.current = false;
+      streamActiveRef.current = false;
     };
   }
 
   function stopStream() {
     stopRequestedRef.current = true;
+    streamActiveRef.current = false;
+    streamSessionRef.current += 1;
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -584,12 +609,20 @@ export default function App() {
                   />
                 </div>
                 <div className="input-footer">
-                  <button className="back-button action-button" onClick={() => setInputMode(null)}>
+                  <button
+                    className="back-button action-button"
+                    onClick={() => setInputMode(null)}
+                    disabled={streamWarmup || streaming}
+                  >
                     Back
                   </button>
                   <div className="actions">
-                    <button className="action-button" onClick={streaming ? stopStream : startStream}>
-                      {streaming ? "Stop Streaming" : "Start Streaming"}
+                    <button
+                      className="action-button"
+                      onClick={streaming ? stopStream : startStream}
+                      disabled={streaming ? streamWarmup : false}
+                    >
+                      {streaming && !streamWarmup ? "Stop Streaming" : "Start Streaming"}
                     </button>
                   </div>
                 </div>
