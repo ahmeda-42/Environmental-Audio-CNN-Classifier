@@ -388,6 +388,10 @@ button[disabled] {
   min-height: 180px;
 }
 
+.spectrogram-panel .panel-loading {
+  flex: 1;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
