@@ -32,10 +32,14 @@ logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="Environmental Audio CNN Classifier API")
 logger = logging.getLogger("uvicorn.error")
 
-# Allow the deployed frontend to call the API
+# Allow the deployed frontend and local dev servers to call the API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://environmental-audio-cnn-classifier-ce92.onrender.com"],
+    allow_origins=[
+        "https://environmental-audio-cnn-classifier-ce92.onrender.com",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

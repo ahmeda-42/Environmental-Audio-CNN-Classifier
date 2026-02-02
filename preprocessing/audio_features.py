@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 import shutil
 import subprocess
@@ -36,6 +37,22 @@ def load_audio_full(audio_path, target_sr=SAMPLE_RATE):
     logger = logging.getLogger("uvicorn.error")
     logger.info("Audio load start: %s", audio_path)
     try:
+        loader_pref = os.getenv("AUDIO_LOADER", "ffmpeg").lower()
+        if loader_pref == "librosa":
+            y, sr = librosa.load(audio_path, sr=target_sr, mono=True, res_type="kaiser_fast")
+            logger.info("Audio load done via librosa (samples=%d, sr=%d).", y.size, sr)
+            return y, sr
+
+        if loader_pref == "soundfile":
+            y, sr = sf.read(audio_path, dtype="float32", always_2d=False)
+            if y.ndim > 1:
+                y = np.mean(y, axis=1)
+            if sr != target_sr:
+                y = librosa.resample(y, orig_sr=sr, target_sr=target_sr)
+                sr = target_sr
+            logger.info("Audio load done via soundfile (samples=%d, sr=%d).", y.size, sr)
+            return y, sr
+
         if shutil.which("ffmpeg"):
             cmd = [
                 "ffmpeg",

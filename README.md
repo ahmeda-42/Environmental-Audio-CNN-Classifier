@@ -167,6 +167,7 @@ Evaluates on fold 10 and prints the classification report and confusion matrix.
 
 ### 5. Run the FastAPI backend
 ```bash
+export AUDIO_LOADER=librosa
 uvicorn app.main:app --reload
 ```
 Base URL: `http://127.0.0.1:8000`

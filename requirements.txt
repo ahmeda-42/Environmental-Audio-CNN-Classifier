@@ -1,4 +1,5 @@
 librosa
+resampy
 numpy
 pandas
 scikit-learn
