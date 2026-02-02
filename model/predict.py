@@ -89,7 +89,7 @@ def predict(
     duration=DURATION,
     n_mels=N_MELS,
     hop_length=HOP_LENGTH,
-    top_k=3,
+    top_k=4,
     reduce_payload=False,
 ):
     start_time = time.perf_counter()
