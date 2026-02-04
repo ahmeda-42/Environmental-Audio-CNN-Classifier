@@ -145,6 +145,13 @@ Confusion Matrix:
 
 Note: You can evaluate it yourself by running `python model/evaluate.py` (look at the steps below)
 
+## Potential use cases:
+
+- Smart city monitoring (detecting sirens, construction noise, traffic sounds)
+- Assistive technologies for accessibility (alerting users to critical sounds)
+- Edge AI / IoT sound detection systems (home security, wildlife monitoring)
+- Inputs to autonomous vehicles and robots (secondary to LiDAR/Cameras)
+
 ## Try It Yourself!!
 
 ### 1. Prepare the dataset (UrbanSound8K)
